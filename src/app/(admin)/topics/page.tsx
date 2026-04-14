@@ -1,12 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { getRootTopicsWithCount } from '@/lib/services/topic.service'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { TopicTreeBrowser } from '@/components/topics/TopicTreeBrowser'
+import { TopicViewSwitcher } from '@/components/topics/TopicViewSwitcher'
 import Link from 'next/link'
 
 export default async function TopicsPage() {
   const supabase = await createClient()
   const roots = await getRootTopicsWithCount(supabase)
+
+  // Auch alle Topics für die Tabellen-Ansicht laden
+  const { data: allTopics, count } = await supabase
+    .from('topics')
+    .select('*', { count: 'exact' })
+    .order('level')
+    .order('name')
+    .range(0, 24)
 
   return (
     <div>
@@ -23,7 +31,11 @@ export default async function TopicsPage() {
         }
       />
 
-      <TopicTreeBrowser roots={roots} />
+      <TopicViewSwitcher
+        roots={roots}
+        initialTableData={allTopics ?? []}
+        initialCount={count ?? 0}
+      />
     </div>
   )
 }
