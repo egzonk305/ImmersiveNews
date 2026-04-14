@@ -5,10 +5,11 @@ import { usePathname } from 'next/navigation'
 const routeLabels: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/topics': 'Topics',
-  '/review': 'Review',
+  '/review': 'Review-Queue',
   '/import': 'Import',
   '/export': 'Export',
   '/settings/feeds': 'Feed-Einstellungen',
+  '/schema': 'Datenbank-Schema',
 }
 
 export function TopBar() {

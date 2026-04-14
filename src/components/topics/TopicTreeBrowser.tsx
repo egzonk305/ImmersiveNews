@@ -1,212 +1,249 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { cn, levelLabel } from '@/lib/utils'
-import type { TopicNode } from '@/lib/types/app.types'
+import type { Topic } from '@/lib/types/database.types'
+
+interface TreeNode extends Topic {
+  children?: TreeNode[]
+  childCount?: number
+}
 
 interface TopicTreeBrowserProps {
-  roots: TopicNode[]
-}
-
-interface TreeNodeProps {
-  node: TopicNode
-  depth: number
-}
-
-function TreeNode({ node, depth }: TreeNodeProps) {
-  const [expanded, setExpanded] = useState(depth === 0)
-  const [children, setChildren] = useState<TopicNode[] | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  const hasChildren = !node.isLeaf && (node.childCount ?? 0) > 0
-
-  const handleToggle = useCallback(async () => {
-    if (!hasChildren) return
-
-    if (!expanded && children === null) {
-      setLoading(true)
-      try {
-        const res = await fetch(`/api/topics/${node.id}`)
-        const json = await res.json()
-        setChildren(json.data.children)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    setExpanded((prev) => !prev)
-  }, [expanded, children, hasChildren, node.id])
-
-  return (
-    <li>
-      <div
-        className={cn(
-          'group flex items-center gap-1 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-gray-50'
-        )}
-        style={{ paddingLeft: `${depth * 20 + 8}px` }}
-      >
-        <button
-          onClick={handleToggle}
-          className={cn(
-            'flex h-4 w-4 flex-shrink-0 items-center justify-center text-gray-400',
-            !hasChildren && 'invisible'
-          )}
-          aria-label={expanded ? 'Einklappen' : 'Ausklappen'}
-        >
-          {loading ? (
-            <span className="animate-spin text-xs">⟳</span>
-          ) : (
-            <span className="text-xs">{expanded ? '▾' : '▸'}</span>
-          )}
-        </button>
-
-        <span
-          className={cn(
-            'h-1.5 w-1.5 flex-shrink-0 rounded-full',
-            node.level === 1 && 'bg-purple-400',
-            node.level === 2 && 'bg-blue-400',
-            node.level === 3 && 'bg-teal-400',
-            node.level === 4 && 'bg-amber-400',
-            node.level === 5 && 'bg-green-400'
-          )}
-        />
-
-        <Link
-          href={`/topics/${node.id}`}
-          className="flex-1 truncate text-gray-700 hover:text-blue-600"
-        >
-          {node.name}
-        </Link>
-
-        {hasChildren && (
-          <span className="mr-1 text-xs text-gray-400">{node.childCount}</span>
-        )}
-
-        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <Link
-            href={`/topics/new?parent_id=${node.id}`}
-            className="px-1 text-xs text-gray-400 hover:text-blue-600"
-            title="Untereintrag anlegen"
-          >
-            +
-          </Link>
-          <Link
-            href={`/topics/${node.id}/edit`}
-            className="px-1 text-xs text-gray-400 hover:text-gray-600"
-            title="Bearbeiten"
-          >
-            ✎
-          </Link>
-        </div>
-      </div>
-
-      {expanded && children && children.length > 0 && (
-        <ul>
-          {children.map((child) => (
-            <TreeNode key={child.id} node={child} depth={depth + 1} />
-          ))}
-        </ul>
-      )}
-    </li>
-  )
+  roots: TreeNode[]
 }
 
 export function TopicTreeBrowser({ roots }: TopicTreeBrowserProps) {
-  const [search, setSearch] = useState('')
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [children, setChildren] = useState<Map<string, TreeNode[]>>(new Map())
+  const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white">
-      <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
-        <input
-          type="search"
-          placeholder="Topics durchsuchen…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <div className="hidden items-center gap-3 text-xs text-gray-400 md:flex">
-          {[
-            { level: 1, color: 'bg-purple-400', label: 'Root' },
-            { level: 2, color: 'bg-blue-400', label: 'Bereich' },
-            { level: 3, color: 'bg-teal-400', label: 'Unterbereich' },
-            { level: 4, color: 'bg-amber-400', label: 'Thema' },
-            { level: 5, color: 'bg-green-400', label: 'Eintrag' },
-          ].map((l) => (
-            <span key={l.level} className="flex items-center gap-1">
-              <span className={cn('h-2 w-2 rounded-full', l.color)} />
-              {l.label}
-            </span>
-          ))}
-        </div>
-      </div>
+  // Inline rename
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
-      {search ? (
-        <SearchResults query={search} />
-      ) : (
-        <ul className="px-2 py-2">
-          {roots.map((root) => (
-            <TreeNode key={root.id} node={root} depth={0} />
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-function SearchResults({ query }: { query: string }) {
-  const [results, setResults] = useState<TopicNode[] | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults(null)
-      setLoading(false)
+  const toggleExpand = useCallback(async (id: string) => {
+    if (expanded.has(id)) {
+      setExpanded(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
       return
     }
 
-    let isCancelled = false
-    setLoading(true)
-
-    const timer = setTimeout(async () => {
+    // Lade Kinder wenn nötig
+    if (!children.has(id)) {
+      setLoadingId(id)
       try {
-        const res = await fetch(`/api/topics?search=${encodeURIComponent(query)}`)
+        const res = await fetch(`/api/topics/${id}`)
         const json = await res.json()
-        if (!isCancelled) {
-          setResults(json.data ?? [])
+        if (res.ok && json.data?.children) {
+          setChildren(prev => new Map(prev).set(id, json.data.children))
         }
-      } finally {
-        if (!isCancelled) {
-          setLoading(false)
-        }
-      }
-    }, 300)
-
-    return () => {
-      isCancelled = true
-      clearTimeout(timer)
+      } catch { /* silent */ }
+      setLoadingId(null)
     }
-  }, [query])
 
-  if (loading) return <p className="p-4 text-sm text-gray-400">Suche…</p>
-  if (!results) return null
-  if (results.length === 0) {
-    return <p className="p-4 text-sm text-gray-400">Keine Ergebnisse für „{query}“</p>
+    setExpanded(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }, [expanded, children])
+
+  const handleRename = async (id: string) => {
+    if (!editName.trim()) return
+    setError(null)
+    try {
+      const res = await fetch(`/api/topics/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim() }),
+      })
+      if (res.ok) {
+        setEditingId(null)
+        // Aktualisiere lokalen State
+        // (simpel: Seite neu laden für vollständige Aktualisierung)
+        window.location.reload()
+      } else {
+        const json = await res.json()
+        setError(json.error ?? 'Fehler')
+      }
+    } catch {
+      setError('Netzwerkfehler')
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Topic wirklich löschen?')) return
+    try {
+      const res = await fetch(`/api/topics/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: false }),
+      })
+
+      if (res.status === 409) {
+        if (confirm('Topic hat Unterthemen. Trotzdem mit allen Unterthemen löschen?')) {
+          const res2 = await fetch(`/api/topics/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ force: true }),
+          })
+          if (res2.ok) window.location.reload()
+        }
+        return
+      }
+
+      if (res.ok) window.location.reload()
+    } catch {
+      setError('Netzwerkfehler')
+    }
+  }
+
+  const renderNode = (node: TreeNode, depth: number = 0) => {
+    const isExpanded = expanded.has(node.id)
+    const isLoading = loadingId === node.id
+    const nodeChildren = children.get(node.id)
+    const isLeaf = node.level >= 5
+    const isEditing = editingId === node.id
+
+    return (
+      <div key={node.id}>
+        <div
+          className={cn(
+            'group flex items-center gap-1.5 py-1.5 px-2 rounded-md hover:bg-gray-50 transition-colors text-sm',
+            isEditing && 'bg-blue-50'
+          )}
+          style={{ paddingLeft: `${depth * 20 + 8}px` }}
+        >
+          {/* Expand/Collapse */}
+          {!isLeaf ? (
+            <button
+              onClick={() => toggleExpand(node.id)}
+              className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-gray-600 flex-shrink-0"
+            >
+              {isLoading ? (
+                <span className="animate-spin text-[10px]">⟳</span>
+              ) : (
+                <span className="text-[10px]">{isExpanded ? '▼' : '▶'}</span>
+              )}
+            </button>
+          ) : (
+            <span className="w-4 h-4 flex items-center justify-center text-gray-300 flex-shrink-0 text-[10px]">
+              ·
+            </span>
+          )}
+
+          {/* Name */}
+          {isEditing ? (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRename(node.id)
+                  if (e.key === 'Escape') setEditingId(null)
+                }}
+                autoFocus
+                className="flex-1 rounded border border-blue-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button onClick={() => handleRename(node.id)} className="text-[10px] text-blue-600 font-medium">OK</button>
+              <button onClick={() => setEditingId(null)} className="text-[10px] text-gray-400">Abb.</button>
+            </div>
+          ) : (
+            <>
+              <Link
+                href={`/topics/${node.id}`}
+                className="flex-1 truncate text-gray-700 hover:text-blue-600 transition-colors"
+                onDoubleClick={(e) => {
+                  e.preventDefault()
+                  setEditingId(node.id)
+                  setEditName(node.name)
+                }}
+                title={`${node.name} (Doppelklick = Umbenennen)`}
+              >
+                {node.name}
+              </Link>
+
+              <span className="text-[10px] text-gray-400 flex-shrink-0 ml-1">
+                {levelLabel(node.level)}
+              </span>
+
+              {/* Aktions-Buttons */}
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                <button
+                  onClick={() => { setEditingId(node.id); setEditName(node.name) }}
+                  className="rounded px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-200 transition-colors"
+                  title="Umbenennen"
+                >
+                  ✎
+                </button>
+                {!isLeaf && (
+                  <Link
+                    href={`/topics/new?parent_id=${node.id}`}
+                    className="rounded px-1.5 py-0.5 text-[10px] text-gray-400 hover:bg-gray-200 transition-colors"
+                    title="Unterthema anlegen"
+                  >
+                    ＋
+                  </Link>
+                )}
+                <button
+                  onClick={() => handleDelete(node.id)}
+                  className="rounded px-1.5 py-0.5 text-[10px] text-red-400 hover:bg-red-50 transition-colors"
+                  title="Löschen"
+                >
+                  ✕
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Kinder */}
+        {isExpanded && nodeChildren && nodeChildren.length > 0 && (
+          <div>
+            {nodeChildren.map(child => renderNode(child, depth + 1))}
+          </div>
+        )}
+
+        {isExpanded && nodeChildren && nodeChildren.length === 0 && (
+          <div
+            className="text-xs text-gray-400 py-1"
+            style={{ paddingLeft: `${(depth + 1) * 20 + 28}px` }}
+          >
+            Keine Unterthemen
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
-    <ul className="px-2 py-2">
-      {results.map((r) => (
-        <li key={r.id}>
-          <Link
-            href={`/topics/${r.id}`}
-            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          >
-            <span className="text-xs text-gray-400">{levelLabel(r.level)}</span>
-            {r.name}
+    <div>
+      {error && (
+        <div className="mb-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600 flex justify-between items-center">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400">✕</button>
+        </div>
+      )}
+
+      {roots.length === 0 ? (
+        <div className="text-center py-8 text-sm text-gray-400">
+          Noch keine Topics vorhanden.{' '}
+          <Link href="/topics/new" className="text-blue-600 hover:underline">
+            Erstelle das erste Topic
           </Link>
-        </li>
-      ))}
-    </ul>
+        </div>
+      ) : (
+        <div className="space-y-0.5">
+          {roots.map(root => renderNode(root))}
+        </div>
+      )}
+    </div>
   )
 }

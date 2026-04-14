@@ -1,38 +1,28 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { cn, levelLabel, formatDate } from '@/lib/utils'
 import type { Topic } from '@/lib/types/database.types'
 
-interface TopicTableViewProps {
-  initialData: Topic[]
-  initialCount: number
-}
-
-const LEVEL_COLORS: Record<number, string> = {
-  1: 'bg-purple-100 text-purple-700',
-  2: 'bg-blue-100 text-blue-700',
-  3: 'bg-teal-100 text-teal-700',
-  4: 'bg-amber-100 text-amber-700',
-  5: 'bg-green-100 text-green-700',
-}
-
-export function TopicTableView({ initialData, initialCount }: TopicTableViewProps) {
+export function TopicTableView() {
   const router = useRouter()
-  const [data, setData] = useState<Topic[]>(initialData)
-  const [count, setCount] = useState(initialCount)
-  const [loading, setLoading] = useState(false)
-  const [search, setSearch] = useState('')
-  const [levelFilter, setLevelFilter] = useState<number | null>(null)
+  const searchParams = useSearchParams()
+  const [data, setData] = useState<Topic[]>([])
+  const [count, setCount] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [search, setSearch] = useState(searchParams.get('q') || '')
+  const [levelFilter, setLevelFilter] = useState(searchParams.get('level') || '')
   const [page, setPage] = useState(1)
+  const pageSize = 50
+
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const pageSize = 25
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -40,16 +30,20 @@ export function TopicTableView({ initialData, initialCount }: TopicTableViewProp
     try {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
-      if (levelFilter) params.set('level', String(levelFilter))
+      if (levelFilter) params.set('level', levelFilter)
       params.set('page', String(page))
       params.set('pageSize', String(pageSize))
 
       const res = await fetch(`/api/topics?${params}`)
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || `HTTP ${res.status}`)
+      }
       const json = await res.json()
       setData(json.data ?? [])
       setCount(json.count ?? 0)
-    } catch {
-      setError('Fehler beim Laden der Daten')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fehler beim Laden der Daten')
     } finally {
       setLoading(false)
     }
@@ -121,6 +115,11 @@ export function TopicTableView({ initialData, initialCount }: TopicTableViewProp
 
       if (res.ok) {
         setDeleteConfirm(null)
+        setSelected(prev => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
         fetchData()
         router.refresh()
       } else {
@@ -136,12 +135,17 @@ export function TopicTableView({ initialData, initialCount }: TopicTableViewProp
     if (selected.size === 0) return
     if (!confirm(`${selected.size} Topics wirklich löschen?`)) return
 
+    setError(null)
+    let deleted = 0
     for (const id of selected) {
-      await fetch(`/api/topics/${id}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ force: true }),
-      })
+      try {
+        const res = await fetch(`/api/topics/${id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force: true }),
+        })
+        if (res.ok) deleted++
+      } catch { /* continue */ }
     }
 
     setSelected(new Set())
@@ -151,212 +155,228 @@ export function TopicTableView({ initialData, initialCount }: TopicTableViewProp
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+      {/* Filter Bar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <input
-            type="search"
-            placeholder="Suchen…"
+            type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            className="w-64 rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Suche nach Name…"
+            className="w-full rounded-md border border-gray-200 pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-          <select
-            value={levelFilter ?? ''}
-            onChange={(e) => { setLevelFilter(e.target.value ? Number(e.target.value) : null); setPage(1) }}
-            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Alle Ebenen</option>
-            {[1, 2, 3, 4, 5].map((l) => (
-              <option key={l} value={l}>{levelLabel(l)}</option>
-            ))}
-          </select>
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">⌕</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {selected.size > 0 && (
-            <>
-              <span className="text-xs text-gray-500">{selected.size} ausgewählt</span>
-              <button
-                onClick={handleBulkDelete}
-                className="rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
-              >
-                Auswahl löschen
-              </button>
-            </>
-          )}
-          <span className="text-xs text-gray-400">{count} Einträge</span>
-        </div>
+        <select
+          value={levelFilter}
+          onChange={(e) => { setLevelFilter(e.target.value); setPage(1) }}
+          className="rounded-md border border-gray-200 px-3 py-2 text-sm bg-white"
+        >
+          <option value="">Alle Ebenen</option>
+          {[1, 2, 3, 4, 5].map(l => (
+            <option key={l} value={l}>{levelLabel(l)}</option>
+          ))}
+        </select>
+
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs text-gray-500">{selected.size} gewählt</span>
+            <button
+              onClick={handleBulkDelete}
+              className="rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 transition-colors"
+            >
+              Löschen
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Fehlermeldung */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md px-4 py-2 text-sm text-red-600 flex justify-between items-center">
-          {error}
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between items-center">
+          <span>{error}</span>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">✕</button>
         </div>
       )}
 
       {/* Tabelle */}
       <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="w-10 px-3 py-3">
-                  <input
-                    type="checkbox"
-                    checked={data.length > 0 && selected.size === data.length}
-                    onChange={toggleSelectAll}
-                    className="rounded border-gray-300"
-                  />
-                </th>
-                <th className="px-3 py-3 text-left font-medium text-gray-600">Name</th>
-                <th className="px-3 py-3 text-left font-medium text-gray-600 w-32">Ebene</th>
-                <th className="px-3 py-3 text-left font-medium text-gray-600 w-44">Erstellt</th>
-                <th className="px-3 py-3 text-right font-medium text-gray-600 w-36">Aktionen</th>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
+              <th className="px-3 py-2.5 w-8">
+                <input
+                  type="checkbox"
+                  checked={selected.size === data.length && data.length > 0}
+                  onChange={toggleSelectAll}
+                  className="rounded border-gray-300"
+                />
+              </th>
+              <th className="px-3 py-2.5">Name</th>
+              <th className="px-3 py-2.5 w-28">Ebene</th>
+              <th className="px-3 py-2.5 w-32">Erstellt</th>
+              <th className="px-3 py-2.5 w-32">Aktionen</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {data.length === 0 && !loading ? (
+              <tr>
+                <td colSpan={5} className="px-3 py-10 text-center text-gray-400">
+                  {search ? `Keine Ergebnisse für „${search}"` : 'Keine Einträge gefunden'}
+                </td>
               </tr>
-            </thead>
-            <tbody className={cn('divide-y divide-gray-50', loading && 'opacity-50')}>
-              {data.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-3 py-10 text-center text-gray-400">
-                    {loading ? 'Laden…' : 'Keine Einträge gefunden'}
+            ) : loading ? (
+              <tr>
+                <td colSpan={5} className="px-3 py-10 text-center text-gray-400">Laden…</td>
+              </tr>
+            ) : (
+              data.map((topic) => (
+                <tr
+                  key={topic.id}
+                  className={cn(
+                    'group transition-colors hover:bg-gray-50/50',
+                    selected.has(topic.id) && 'bg-blue-50/30',
+                    deleteConfirm === topic.id && 'bg-red-50/30'
+                  )}
+                >
+                  <td className="px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(topic.id)}
+                      onChange={() => toggleSelect(topic.id)}
+                      className="rounded border-gray-300"
+                    />
                   </td>
-                </tr>
-              ) : (
-                data.map((topic) => (
-                  <tr
-                    key={topic.id}
-                    className={cn(
-                      'group transition-colors hover:bg-gray-50/50',
-                      selected.has(topic.id) && 'bg-blue-50/30',
-                      deleteConfirm === topic.id && 'bg-red-50/30'
-                    )}
-                  >
-                    <td className="px-3 py-2.5">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(topic.id)}
-                        onChange={() => toggleSelect(topic.id)}
-                        className="rounded border-gray-300"
-                      />
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {editingId === topic.id ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveEdit(topic.id)
-                              if (e.key === 'Escape') setEditingId(null)
-                            }}
-                            autoFocus
-                            className="flex-1 rounded border border-blue-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <button
-                            onClick={() => saveEdit(topic.id)}
-                            className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                          >
-                            OK
-                          </button>
-                          <button
-                            onClick={() => setEditingId(null)}
-                            className="text-xs text-gray-400 hover:text-gray-600"
-                          >
-                            Abb.
-                          </button>
-                        </div>
-                      ) : deleteConfirm === topic.id ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-red-600 text-xs">Wirklich löschen (inkl. Kinder)?</span>
-                          <button
-                            onClick={() => handleDelete(topic.id, true)}
-                            className="text-xs text-red-600 hover:text-red-800 font-medium"
-                          >
-                            Ja
-                          </button>
-                          <button
-                            onClick={() => setDeleteConfirm(null)}
-                            className="text-xs text-gray-400 hover:text-gray-600"
-                          >
-                            Nein
-                          </button>
-                        </div>
-                      ) : (
-                        <Link
-                          href={`/topics/${topic.id}`}
-                          className="text-gray-800 hover:text-blue-600 transition-colors"
-                        >
-                          {topic.name}
-                        </Link>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className={cn(
-                        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                        LEVEL_COLORS[topic.level] ?? 'bg-gray-100 text-gray-600'
-                      )}>
-                        {levelLabel(topic.level)}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 text-gray-500 text-xs">
-                      {formatDate(topic.created_at)}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <td className="px-3 py-2.5">
+                    {editingId === topic.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveEdit(topic.id)
+                            if (e.key === 'Escape') setEditingId(null)
+                          }}
+                          autoFocus
+                          className="flex-1 rounded border border-blue-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                         <button
-                          onClick={() => startEdit(topic)}
-                          className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-                          title="Umbenennen"
+                          onClick={() => saveEdit(topic.id)}
+                          className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                         >
-                          Umbenennen
+                          OK
                         </button>
-                        <Link
-                          href={`/topics/${topic.id}/edit`}
-                          className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-                          title="Bearbeiten"
-                        >
-                          Bearbeiten
-                        </Link>
                         <button
-                          onClick={() => handleDelete(topic.id)}
-                          className="rounded px-2 py-1 text-xs text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
-                          title="Löschen"
+                          onClick={() => setEditingId(null)}
+                          className="text-xs text-gray-400 hover:text-gray-600"
                         >
-                          Löschen
+                          Abb.
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    ) : deleteConfirm === topic.id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-red-600 text-xs">Wirklich löschen (inkl. Unterthemen)?</span>
+                        <button
+                          onClick={() => handleDelete(topic.id, true)}
+                          className="text-xs text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Ja
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          className="text-xs text-gray-400 hover:text-gray-600"
+                        >
+                          Nein
+                        </button>
+                      </div>
+                    ) : (
+                      <Link
+                        href={`/topics/${topic.id}`}
+                        className="text-gray-800 hover:text-blue-600 transition-colors"
+                        onDoubleClick={(e) => {
+                          e.preventDefault()
+                          startEdit(topic)
+                        }}
+                        title="Klick = Detail, Doppelklick = Umbenennen"
+                      >
+                        {topic.name}
+                      </Link>
+                    )}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600">
+                      {levelLabel(topic.level)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-xs text-gray-400">
+                    {formatDate(topic.created_at)}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => startEdit(topic)}
+                        className="rounded border border-gray-200 px-2 py-1 text-[10px] text-gray-500 hover:bg-gray-100 transition-colors"
+                        title="Umbenennen"
+                      >
+                        ✎
+                      </button>
+                      <Link
+                        href={`/topics/${topic.id}/edit`}
+                        className="rounded border border-gray-200 px-2 py-1 text-[10px] text-gray-500 hover:bg-gray-100 transition-colors"
+                        title="Bearbeiten"
+                      >
+                        ⚙
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(topic.id)}
+                        className="rounded border border-red-200 px-2 py-1 text-[10px] text-red-400 hover:bg-red-50 transition-colors"
+                        title="Löschen"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-100 px-4 py-3">
+          <div className="border-t border-gray-100 px-5 py-3 flex items-center justify-between">
             <span className="text-xs text-gray-400">
-              Seite {page} von {totalPages}
+              {count} Einträge · Seite {page} von {totalPages}
             </span>
             <div className="flex gap-1">
               <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => setPage(1)}
                 disabled={page <= 1}
-                className="rounded border border-gray-200 px-3 py-1 text-xs disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                className="rounded border border-gray-200 px-2 py-1 text-xs disabled:opacity-30 hover:bg-gray-50"
               >
-                ← Zurück
+                ««
               </button>
               <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="rounded border border-gray-200 px-3 py-1 text-xs disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="rounded border border-gray-200 px-2 py-1 text-xs disabled:opacity-30 hover:bg-gray-50"
               >
-                Weiter →
+                ←
+              </button>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="rounded border border-gray-200 px-2 py-1 text-xs disabled:opacity-30 hover:bg-gray-50"
+              >
+                →
+              </button>
+              <button
+                onClick={() => setPage(totalPages)}
+                disabled={page >= totalPages}
+                className="rounded border border-gray-200 px-2 py-1 text-xs disabled:opacity-30 hover:bg-gray-50"
+              >
+                »»
               </button>
             </div>
           </div>

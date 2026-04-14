@@ -1,10 +1,10 @@
-import type { Topic } from './database.types'
+import type { Topic, RssFeed, IncomingItem } from './database.types'
 
 // Topic mit geladenen Kindern (für Tree-Ansicht)
 export interface TopicNode extends Topic {
   children?: TopicNode[]
   childCount?: number
-  isLeaf?: boolean   // level === 5 oder keine Kinder
+  isLeaf?: boolean
 }
 
 // Breadcrumb-Pfad zu einem Topic
@@ -37,9 +37,34 @@ export interface ImportResult {
   errors: { row: number; message: string }[]
 }
 
-// Review/Incoming (für spätere Feed-Integration)
+// Review/Incoming
 export type ReviewStatus = 'pending' | 'approved' | 'rejected' | 'needs_edit'
 export type SourceType = 'manual' | 'import_csv' | 'import_json' | 'rss' | 'api' | 'xml'
+
+// Feed mit Statistiken
+export interface FeedWithStats extends RssFeed {
+  pending_count?: number
+}
+
+// Incoming Item mit Feed-Info
+export interface IncomingItemWithFeed extends IncomingItem {
+  feed?: Pick<RssFeed, 'id' | 'name' | 'url'> | null
+  target_topic?: Pick<Topic, 'id' | 'name' | 'level'> | null
+}
+
+// Schema-Info (für dynamische UI)
+export interface SchemaColumn {
+  table_name: string
+  column_name: string
+  data_type: string
+  is_nullable: string
+  column_default: string | null
+}
+
+export interface TableSchema {
+  name: string
+  columns: SchemaColumn[]
+}
 
 // API-Response-Wrapper
 export interface ApiResponse<T> {

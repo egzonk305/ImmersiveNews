@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -11,16 +12,35 @@ const navItems = [
   { href: '/import', label: 'Import', icon: '↑' },
   { href: '/export', label: 'Export', icon: '↓' },
   { href: '/settings/feeds', label: 'Feeds', icon: '⟳' },
+  { href: '/schema', label: 'Schema', icon: '◈' },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    const loadPending = async () => {
+      try {
+        const res = await fetch('/api/review/stats')
+        const json = await res.json()
+        if (res.ok) setPendingCount(json.data?.pending ?? 0)
+      } catch { /* silent */ }
+    }
+
+    loadPending()
+    // Aktualisiere alle 30 Sekunden
+    const interval = setInterval(loadPending, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <aside className="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
       {/* Logo */}
       <div className="h-14 px-5 flex items-center border-b border-gray-100">
-        <span className="font-medium text-gray-900 text-sm">Admin Platform</span>
+        <Link href="/dashboard" className="font-medium text-gray-900 text-sm hover:text-blue-600 transition-colors">
+          Admin Platform
+        </Link>
       </div>
 
       {/* Navigation */}
@@ -39,7 +59,12 @@ export function Sidebar() {
               )}
             >
               <span className="w-4 text-center opacity-60">{item.icon}</span>
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.badge && pendingCount > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-amber-500 text-white text-[10px] font-medium px-1">
+                  {pendingCount > 99 ? '99+' : pendingCount}
+                </span>
+              )}
             </Link>
           )
         })}
@@ -47,7 +72,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-gray-100">
-        <p className="text-xs text-gray-400">v0.1.0</p>
+        <p className="text-xs text-gray-400">v0.2.0</p>
       </div>
     </aside>
   )
