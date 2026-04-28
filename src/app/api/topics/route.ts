@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
     const topic = await createTopic(supabase, {
       name: parsed.data.name,
       parent_id: parsed.data.parent_id ?? null,
+      description: parsed.data.description ?? null,
     })
 
     return NextResponse.json({ data: topic }, { status: 201 })

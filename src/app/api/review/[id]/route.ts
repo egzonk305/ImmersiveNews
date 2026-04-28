@@ -20,7 +20,14 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 
     const { data, error } = await supabase
       .from('incoming_items')
-      .select('*, rss_feeds(id, name, url)')
+      .select(
+        `*,
+        rss_feeds:feed_id(id, name, url),
+        candidates:incoming_item_topics(
+          id, topic_id, rank, confidence, is_primary, reason, source, status, created_at,
+          topics:topic_id(id, name, level)
+        )`
+      )
       .eq('id', id)
       .single()
 
@@ -31,7 +38,10 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
   }
 }
 
-// PATCH /api/review/[id] — Status ändern / Freigeben / Ablehnen
+// PATCH /api/review/[id] — Status / Title / Description
+// Bei status='approved' wird KEIN neues Topic erzeugt; nur die bestehende
+// Zuordnung in incoming_item_topics wird ggf. bestätigt. Wird ein
+// target_topic_id übergeben, wird eine manuelle Zuordnung als primary angelegt.
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params
@@ -53,15 +63,16 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (parsed.data.status === 'approved' || parsed.data.status === 'rejected') {
       updateData.reviewed_at = new Date().toISOString()
     }
+    if (parsed.data.status === 'approved') {
+      updateData.processing_state = 'done'
+    }
 
     if (parsed.data.target_topic_id !== undefined) {
       updateData.target_topic_id = parsed.data.target_topic_id
     }
-
     if (parsed.data.title) {
       updateData.title = parsed.data.title
     }
-
     if (parsed.data.description !== undefined) {
       updateData.description = parsed.data.description
     }
@@ -70,40 +81,38 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       .from('incoming_items')
       .update(updateData)
       .eq('id', id)
-      .select('*, rss_feeds(id, name, url)')
+      .select('*, rss_feeds:feed_id(id, name, url)')
       .single()
 
     if (error) throw new Error(error.message)
 
-    // Bei Freigabe: Topic in topics-Tabelle anlegen
-    if (parsed.data.status === 'approved' && data) {
-      const topicInsert: Record<string, unknown> = {
-        name: data.title,
-        parent_id: data.target_topic_id || null,
-        level: 5, // Standard: Blatt-Ebene
-      }
+    // Bei Freigabe mit explizitem target_topic_id: bestehende manuelle
+    // Zuordnung idempotent setzen (KEIN neues Topic erzeugen).
+    if (
+      parsed.data.status === 'approved' &&
+      parsed.data.target_topic_id &&
+      data
+    ) {
+      // bestehende primary-Zuordnung deaktivieren
+      await supabase
+        .from('incoming_item_topics')
+        .update({ is_primary: false })
+        .eq('incoming_item_id', id)
+        .eq('is_primary', true)
 
-      // Wenn target_topic gesetzt, Level ableiten
-      if (data.target_topic_id) {
-        const { data: parent } = await supabase
-          .from('topics')
-          .select('level')
-          .eq('id', data.target_topic_id)
-          .single()
-
-        if (parent) {
-          topicInsert.level = Math.min(parent.level + 1, 5)
-        }
-      }
-
-      const { error: topicError } = await supabase
-        .from('topics')
-        .insert(topicInsert)
-
-      if (topicError) {
-        // Nicht fatal – Item ist trotzdem freigegeben
-        console.error('Topic-Erstellung nach Freigabe fehlgeschlagen:', topicError.message)
-      }
+      // upsert manuelle Zuordnung
+      await supabase.from('incoming_item_topics').upsert(
+        {
+          incoming_item_id: id,
+          topic_id: parsed.data.target_topic_id,
+          rank: 1,
+          is_primary: true,
+          source: 'manual',
+          status: 'confirmed',
+          reason: 'Manuell beim Review zugeordnet',
+        },
+        { onConflict: 'incoming_item_id,topic_id' }
+      )
     }
 
     return NextResponse.json({ data })
@@ -118,10 +127,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteContext) {
     const { id } = await params
     const supabase = await createClient()
 
-    const { error } = await supabase
-      .from('incoming_items')
-      .delete()
-      .eq('id', id)
+    const { error } = await supabase.from('incoming_items').delete().eq('id', id)
 
     if (error) throw new Error(error.message)
     return NextResponse.json({ success: true })

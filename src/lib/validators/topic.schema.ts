@@ -7,6 +7,7 @@ export const createTopicSchema = z.object({
     .max(200, 'Name darf maximal 200 Zeichen haben')
     .trim(),
   parent_id: z.string().uuid('Ungültige Parent-ID').nullable().optional(),
+  description: z.string().max(2000, 'Beschreibung zu lang').nullable().optional(),
 })
 
 export const updateTopicSchema = z.object({
@@ -17,6 +18,7 @@ export const updateTopicSchema = z.object({
     .trim()
     .optional(),
   parent_id: z.string().uuid('Ungültige Parent-ID').nullable().optional(),
+  description: z.string().max(2000, 'Beschreibung zu lang').nullable().optional(),
 })
 
 export const moveTopicSchema = z.object({

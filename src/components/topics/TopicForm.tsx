@@ -15,6 +15,7 @@ interface TopicFormProps {
   defaultValues?: Partial<CreateTopicInput>
   mode?: 'create' | 'edit'
   topicId?: string
+  isFixedRoot?: boolean
 }
 
 export function TopicForm({
@@ -24,6 +25,7 @@ export function TopicForm({
   defaultValues,
   mode = 'create',
   topicId,
+  isFixedRoot = false,
 }: TopicFormProps) {
   const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -39,6 +41,7 @@ export function TopicForm({
     defaultValues: {
       name: defaultValues?.name ?? '',
       parent_id: parentId ?? defaultValues?.parent_id ?? null,
+      description: defaultValues?.description ?? '',
     },
   })
 
@@ -52,10 +55,14 @@ export function TopicForm({
       const url = mode === 'edit' ? `/api/topics/${topicId}` : '/api/topics'
       const method = mode === 'edit' ? 'PATCH' : 'POST'
 
+      const payload = isFixedRoot && mode === 'edit'
+        ? { description: data.description ?? null }
+        : data
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       })
 
       const json = await res.json()
@@ -76,6 +83,12 @@ export function TopicForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg border border-gray-200 p-6 space-y-5">
 
+      {isFixedRoot && (
+        <div className="bg-amber-50 border border-amber-200 rounded-md px-4 py-3 text-sm text-amber-800">
+          🔒 Geschütztes Root-Thema – Name und Position sind fixiert. Nur die Beschreibung kann geändert werden.
+        </div>
+      )}
+
       {/* Name */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -85,11 +98,28 @@ export function TopicForm({
           {...register('name')}
           type="text"
           placeholder="z.B. Hypertrophietraining"
-          autoFocus
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          autoFocus={!isFixedRoot}
+          disabled={isFixedRoot}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
         />
         {errors.name && (
           <p className="mt-1.5 text-xs text-red-500">{errors.name.message}</p>
+        )}
+      </div>
+
+      {/* Beschreibung */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Beschreibung <span className="text-gray-400 font-normal">(optional, hilft der KI)</span>
+        </label>
+        <textarea
+          {...register('description')}
+          rows={3}
+          placeholder="Kurzbeschreibung des Themas — wird vom Klassifizierer als Kontext mitgegeben."
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        {errors.description && (
+          <p className="mt-1.5 text-xs text-red-500">{errors.description.message}</p>
         )}
       </div>
 
@@ -100,7 +130,8 @@ export function TopicForm({
         </label>
         <select
           {...register('parent_id')}
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          disabled={isFixedRoot}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-500"
         >
           <option value="">— Root-Thema (Level 1) —</option>
           {[1, 2, 3, 4].map((level) => (

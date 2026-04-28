@@ -12,6 +12,8 @@ const navItems = [
   { href: '/import', label: 'Import', icon: '↑' },
   { href: '/export', label: 'Export', icon: '↓' },
   { href: '/settings/feeds', label: 'Feeds', icon: '⟳' },
+  { href: '/settings/classifier', label: 'KI-Einstellungen', icon: '🧠' },
+  { href: '/classification-logs', label: 'KI-Logs', icon: '📋' },
   { href: '/schema', label: 'Schema', icon: '◈' },
 ]
 

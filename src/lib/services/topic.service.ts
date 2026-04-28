@@ -75,7 +75,7 @@ export async function getLeafTopics(supabase: Supabase, options?: {
 /** Neues Topic anlegen – Level wird automatisch vom Parent abgeleitet */
 export async function createTopic(
   supabase: Supabase,
-  input: { name: string; parent_id: string | null }
+  input: { name: string; parent_id: string | null; description?: string | null }
 ) {
   let level = 1
 
@@ -92,20 +92,62 @@ export async function createTopic(
     name: input.name.trim(),
     parent_id: input.parent_id,
     level,
+    description: input.description ?? null,
   })
 }
 
 /** Topic umbenennen */
 export async function renameTopic(supabase: Supabase, id: string, name: string) {
+  const topic = await db.getTopicById(supabase, id)
+  if (topic.is_fixed_root) {
+    throw new Error('Root-Topic kann nicht umbenannt werden')
+  }
   return db.updateTopic(supabase, id, { name: name.trim() })
 }
 
-/** Topic löschen – prüft vorher ob Kinder existieren */
+/** Topic-Beschreibung aktualisieren (auch für Root-Topics erlaubt) */
+export async function updateDescription(
+  supabase: Supabase,
+  id: string,
+  description: string | null
+) {
+  return db.updateTopic(supabase, id, { description })
+}
+
+/** Topic-Felder aktualisieren – respektiert Root-Schutz */
+export async function patchTopic(
+  supabase: Supabase,
+  id: string,
+  patch: { name?: string; description?: string | null }
+) {
+  const topic = await db.getTopicById(supabase, id)
+  const update: { name?: string; description?: string | null } = {}
+
+  if (patch.name !== undefined && patch.name !== topic.name) {
+    if (topic.is_fixed_root) {
+      throw new Error('Root-Topic kann nicht umbenannt werden')
+    }
+    update.name = patch.name.trim()
+  }
+  if (patch.description !== undefined) {
+    update.description = patch.description
+  }
+
+  if (Object.keys(update).length === 0) return topic
+  return db.updateTopic(supabase, id, update)
+}
+
+/** Topic löschen – prüft vorher ob Kinder existieren und ob fixed_root */
 export async function deleteTopic(
   supabase: Supabase,
   id: string,
   force = false
 ) {
+  const topic = await db.getTopicById(supabase, id)
+  if (topic.is_fixed_root) {
+    throw new Error('Root-Topic kann nicht gelöscht werden')
+  }
+
   const childCount = await db.getChildCount(supabase, id)
 
   if (childCount > 0 && !force) {
@@ -123,6 +165,11 @@ export async function moveTopic(
   id: string,
   newParentId: string
 ) {
+  const topic = await db.getTopicById(supabase, id)
+  if (topic.is_fixed_root) {
+    throw new Error('Root-Topic kann nicht verschoben werden')
+  }
+
   const newParent = await db.getTopicById(supabase, newParentId)
   const newLevel = newParent.level + 1
 
@@ -134,6 +181,28 @@ export async function moveTopic(
     parent_id: newParentId,
     level: newLevel,
   })
+}
+
+/** Alle Topics mit Pfad — für KI-Prompt */
+export async function getAllowedTopicsForPrompt(supabase: Supabase) {
+  const { data, error } = await supabase
+    .from('topics_with_path')
+    .select('id, name, level, full_path, path_array')
+    .order('full_path')
+
+  if (error) throw new Error(`getAllowedTopicsForPrompt: ${error.message}`)
+  return data ?? []
+}
+
+/** Existenz aller IDs prüfen (für KI-Topic-ID-Validierung) */
+export async function validateTopicIds(supabase: Supabase, ids: string[]) {
+  if (ids.length === 0) return new Set<string>()
+  const { data, error } = await supabase
+    .from('topics')
+    .select('id')
+    .in('id', ids)
+  if (error) throw new Error(`validateTopicIds: ${error.message}`)
+  return new Set((data ?? []).map((r) => r.id as string))
 }
 
 // ─── Analyse ─────────────────────────────────────────────────────────────────

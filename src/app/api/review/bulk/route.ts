@@ -10,6 +10,9 @@ const bulkActionSchema = z.object({
 })
 
 // POST /api/review/bulk
+// Wichtig: Approve erzeugt KEINE neuen Topics. Wird optional ein
+// target_topic_id übergeben, wird je Item eine manuelle Zuordnung in
+// incoming_item_topics als primary gesetzt.
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -40,7 +43,9 @@ export async function POST(request: NextRequest) {
         status,
         reviewed_at: new Date().toISOString(),
       }
-
+      if (action === 'approve') {
+        updateData.processing_state = 'done'
+      }
       if (target_topic_id) {
         updateData.target_topic_id = target_topic_id
       }
@@ -53,22 +58,27 @@ export async function POST(request: NextRequest) {
       if (error) throw new Error(error.message)
       affected = ids.length
 
-      // Bei Massen-Freigabe: Topics anlegen
-      if (action === 'approve') {
-        const { data: items } = await supabase
-          .from('incoming_items')
-          .select('title, target_topic_id')
-          .in('id', ids)
+      if (action === 'approve' && target_topic_id) {
+        // bestehende primaries auf false setzen
+        await supabase
+          .from('incoming_item_topics')
+          .update({ is_primary: false })
+          .in('incoming_item_id', ids)
+          .eq('is_primary', true)
 
-        if (items && items.length > 0) {
-          const topicInserts = items.map(item => ({
-            name: item.title,
-            parent_id: item.target_topic_id || target_topic_id || null,
-            level: 5,
-          }))
+        const inserts = ids.map(itemId => ({
+          incoming_item_id: itemId,
+          topic_id: target_topic_id,
+          rank: 1,
+          is_primary: true,
+          source: 'manual' as const,
+          status: 'confirmed' as const,
+          reason: 'Manuell beim Bulk-Review zugeordnet',
+        }))
 
-          await supabase.from('topics').insert(topicInserts)
-        }
+        await supabase
+          .from('incoming_item_topics')
+          .upsert(inserts, { onConflict: 'incoming_item_id,topic_id' })
       }
     }
 

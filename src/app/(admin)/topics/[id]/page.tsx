@@ -40,8 +40,8 @@ export default async function TopicDetailPage({
       </nav>
 
       <PageHeader
-        title={topic.name}
-        description={`${levelLabel(topic.level)} · Erstellt ${formatDate(topic.created_at)}`}
+        title={topic.is_fixed_root ? `🔒 ${topic.name}` : topic.name}
+        description={`${levelLabel(topic.level)} · Erstellt ${formatDate(topic.created_at)}${topic.is_fixed_root ? ' · Geschütztes Root-Thema' : ''}`}
         action={
           <div className="flex gap-2">
             <Link
@@ -59,6 +59,13 @@ export default async function TopicDetailPage({
           </div>
         }
       />
+
+      {topic.description && (
+        <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50/40 p-4 text-sm text-gray-700">
+          <p className="mb-1 text-xs uppercase tracking-wide text-blue-700">Beschreibung</p>
+          <p className="whitespace-pre-wrap">{topic.description}</p>
+        </div>
+      )}
 
       <div className="mb-6 grid grid-cols-3 gap-4 rounded-lg border border-gray-200 bg-white p-4 text-sm">
         <div>

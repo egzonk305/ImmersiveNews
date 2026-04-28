@@ -15,6 +15,7 @@ const editSchema = z.object({
     .max(200, 'Name darf maximal 200 Zeichen haben')
     .trim(),
   parent_id: z.string().uuid('Ungültige Parent-ID').nullable().optional(),
+  description: z.string().max(2000, 'Beschreibung zu lang').nullable().optional(),
 })
 
 type EditInput = z.infer<typeof editSchema>
@@ -29,6 +30,7 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
   const [serverError, setServerError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const isFixedRoot = topic.is_fixed_root === true
 
   const {
     register,
@@ -39,28 +41,34 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
     defaultValues: {
       name: topic.name,
       parent_id: topic.parent_id,
+      description: topic.description ?? '',
     },
   })
 
   const onSubmit = async (data: EditInput) => {
     setServerError(null)
     try {
-      // Umbenennen
-      if (data.name !== topic.name) {
+      // Name + Description (Patch)
+      const patch: Record<string, unknown> = {}
+      if (!isFixedRoot && data.name !== topic.name) patch.name = data.name
+      if ((data.description ?? '') !== (topic.description ?? '')) {
+        patch.description = data.description ?? null
+      }
+      if (Object.keys(patch).length > 0) {
         const res = await fetch(`/api/topics/${topic.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: data.name }),
+          body: JSON.stringify(patch),
         })
         const json = await res.json()
         if (!res.ok) {
-          setServerError(json.error ?? 'Fehler beim Umbenennen')
+          setServerError(json.error ?? 'Fehler beim Speichern')
           return
         }
       }
 
-      // Verschieben
-      if (data.parent_id !== topic.parent_id && data.parent_id) {
+      // Verschieben (nicht für Root-Topics)
+      if (!isFixedRoot && data.parent_id !== topic.parent_id && data.parent_id) {
         const res = await fetch(`/api/topics/${topic.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -120,6 +128,12 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
           Eigenschaften bearbeiten
         </h2>
 
+        {isFixedRoot && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md px-4 py-3 text-sm text-amber-800">
+            🔒 Geschütztes Root-Thema – Name und Position sind fixiert. Nur die Beschreibung kann geändert werden.
+          </div>
+        )}
+
         {/* Name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -128,11 +142,28 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
           <input
             {...register('name')}
             type="text"
-            autoFocus
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            autoFocus={!isFixedRoot}
+            disabled={isFixedRoot}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
           />
           {errors.name && (
             <p className="mt-1.5 text-xs text-red-500">{errors.name.message}</p>
+          )}
+        </div>
+
+        {/* Beschreibung */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Beschreibung <span className="text-gray-400 font-normal">(optional, hilft der KI)</span>
+          </label>
+          <textarea
+            {...register('description')}
+            rows={3}
+            placeholder="Kurzbeschreibung des Themas — wird vom Klassifizierer als Kontext mitgegeben."
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          {errors.description && (
+            <p className="mt-1.5 text-xs text-red-500">{errors.description.message}</p>
           )}
         </div>
 
@@ -143,7 +174,8 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
           </label>
           <select
             {...register('parent_id')}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            disabled={isFixedRoot}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-500"
           >
             <option value="">— Root-Thema (Level 1) —</option>
             {[1, 2, 3, 4].map((level) => (
@@ -187,50 +219,52 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
       </form>
 
       {/* Gefahrenzone */}
-      <div className="bg-white rounded-lg border border-red-200 p-6 space-y-4">
-        <h2 className="text-sm font-medium text-red-700 border-b border-red-100 pb-3">
-          Gefahrenzone
-        </h2>
+      {!isFixedRoot && (
+        <div className="bg-white rounded-lg border border-red-200 p-6 space-y-4">
+          <h2 className="text-sm font-medium text-red-700 border-b border-red-100 pb-3">
+            Gefahrenzone
+          </h2>
 
-        <p className="text-sm text-gray-600">
-          Das Löschen dieses Topics kann nicht rückgängig gemacht werden.
-          {topic.level < 5 && ' Alle untergeordneten Einträge werden ebenfalls gelöscht.'}
-        </p>
+          <p className="text-sm text-gray-600">
+            Das Löschen dieses Topics kann nicht rückgängig gemacht werden.
+            {topic.level < 5 && ' Alle untergeordneten Einträge werden ebenfalls gelöscht.'}
+          </p>
 
-        {showDeleteConfirm ? (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 space-y-3">
-            <p className="text-sm text-red-700 font-medium">
-              {serverError}
-            </p>
-            <p className="text-sm text-red-600">
-              Möchtest du dieses Topic und alle Untereinträge wirklich löschen?
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleDelete(true)}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
-              >
-                {isDeleting ? 'Wird gelöscht…' : 'Ja, alles löschen'}
-              </button>
-              <button
-                onClick={() => { setShowDeleteConfirm(false); setServerError(null) }}
-                className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Abbrechen
-              </button>
+          {showDeleteConfirm ? (
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 space-y-3">
+              <p className="text-sm text-red-700 font-medium">
+                {serverError}
+              </p>
+              <p className="text-sm text-red-600">
+                Möchtest du dieses Topic und alle Untereinträge wirklich löschen?
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleDelete(true)}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {isDeleting ? 'Wird gelöscht…' : 'Ja, alles löschen'}
+                </button>
+                <button
+                  onClick={() => { setShowDeleteConfirm(false); setServerError(null) }}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Abbrechen
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => handleDelete(false)}
-            disabled={isDeleting}
-            className="px-4 py-2 bg-white text-red-600 text-sm border border-red-300 rounded-md hover:bg-red-50 disabled:opacity-50 transition-colors"
-          >
-            {isDeleting ? 'Wird gelöscht…' : 'Topic löschen'}
-          </button>
-        )}
-      </div>
+          ) : (
+            <button
+              onClick={() => handleDelete(false)}
+              disabled={isDeleting}
+              className="px-4 py-2 bg-white text-red-600 text-sm border border-red-300 rounded-md hover:bg-red-50 disabled:opacity-50 transition-colors"
+            >
+              {isDeleting ? 'Wird gelöscht…' : 'Topic löschen'}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

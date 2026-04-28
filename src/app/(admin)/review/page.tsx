@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
-import type { IncomingItem } from '@/lib/types/database.types'
+import { CandidateList } from '@/components/review/CandidateList'
+import { TopicPicker } from '@/components/review/TopicPicker'
+import type { IncomingItem, ProcessingState } from '@/lib/types/database.types'
 
 type ReviewStats = {
   pending: number
@@ -30,13 +32,12 @@ const statusColors: Record<string, string> = {
   needs_edit: 'bg-blue-50 text-blue-700 border-blue-200',
 }
 
-const sourceLabels: Record<string, string> = {
-  manual: 'Manuell',
-  import_csv: 'CSV',
-  import_json: 'JSON',
-  rss: 'RSS',
-  api: 'API',
-  xml: 'XML',
+const procStateColors: Record<ProcessingState, string> = {
+  pending: 'bg-gray-100 text-gray-600',
+  processing: 'bg-yellow-100 text-yellow-700',
+  classified: 'bg-purple-100 text-purple-700',
+  failed: 'bg-red-100 text-red-700',
+  done: 'bg-green-100 text-green-700',
 }
 
 export default function ReviewPage() {
@@ -44,13 +45,15 @@ export default function ReviewPage() {
   const [stats, setStats] = useState<ReviewStats>({ pending: 0, approved: 0, rejected: 0, needs_edit: 0, total: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState('pending')
-  const [sourceFilter, setSourceFilter] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [editingItem, setEditingItem] = useState<{ id: string; title: string } | null>(null)
   const [page, setPage] = useState(1)
   const [count, setCount] = useState(0)
+  const [classifyingId, setClassifyingId] = useState<string | null>(null)
+  const [bulkClassifying, setBulkClassifying] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState<string | null>(null)
   const pageSize = 20
 
   const loadStats = useCallback(async () => {
@@ -70,11 +73,8 @@ export default function ReviewPage() {
         page: String(page),
         pageSize: String(pageSize),
       })
-      if (sourceFilter) params.set('source', sourceFilter)
-
       const res = await fetch(`/api/review?${params}`)
       const json = await res.json()
-
       if (res.ok) {
         setItems(json.data ?? [])
         setCount(json.count ?? 0)
@@ -86,7 +86,7 @@ export default function ReviewPage() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, sourceFilter, page])
+  }, [statusFilter, page])
 
   useEffect(() => { loadStats() }, [loadStats])
   useEffect(() => { loadItems() }, [loadItems])
@@ -99,11 +99,9 @@ export default function ReviewPage() {
         body: JSON.stringify({ status }),
       })
       if (res.ok) {
-        loadItems()
-        loadStats()
+        loadItems(); loadStats()
       } else {
-        const json = await res.json()
-        setError(json.error)
+        const json = await res.json(); setError(json.error)
       }
     } catch {
       setError('Netzwerkfehler')
@@ -112,62 +110,97 @@ export default function ReviewPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Eintrag endgültig löschen?')) return
+    const res = await fetch(`/api/review/${id}`, { method: 'DELETE' })
+    if (res.ok) { loadItems(); loadStats() }
+  }
+
+  const handleClassify = async (id: string) => {
+    setClassifyingId(id)
+    setError(null); setInfo(null)
     try {
-      const res = await fetch(`/api/review/${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/classify/${id}`, { method: 'POST' })
+      const json = await res.json()
       if (res.ok) {
-        loadItems()
-        loadStats()
+        setInfo(
+          json.data.status === 'success'
+            ? `Klassifiziert: ${json.data.candidates_saved} Kandidaten${json.data.auto_accepted ? ' (auto-akzeptiert)' : ''}`
+            : `Fehlgeschlagen: ${json.data.error}`
+        )
+        setExpandedId(id)
+        loadItems(); loadStats()
+      } else {
+        setError(json.error)
       }
     } catch {
       setError('Netzwerkfehler')
+    } finally {
+      setClassifyingId(null)
+    }
+  }
+
+  const handleReclassify = async (id: string) => {
+    setClassifyingId(id)
+    try {
+      const res = await fetch(`/api/review/${id}/reclassify`, { method: 'POST' })
+      const json = await res.json()
+      if (!res.ok) setError(json.error)
+      else {
+        setInfo('Neu klassifiziert.')
+        loadItems()
+      }
+    } finally {
+      setClassifyingId(null)
     }
   }
 
   const handleBulk = async (action: 'approve' | 'reject' | 'delete') => {
     if (selected.size === 0) return
     if (action === 'delete' && !confirm(`${selected.size} Einträge endgültig löschen?`)) return
+    const res = await fetch('/api/review/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: Array.from(selected), action }),
+    })
+    if (res.ok) { setSelected(new Set()); loadItems(); loadStats() }
+    else { const j = await res.json(); setError(j.error) }
+  }
 
+  const handleClassifyAll = async () => {
+    if (!confirm('Alle pending Items klassifizieren? Das kann eine Weile dauern.')) return
+    setBulkClassifying(true)
+    setError(null); setInfo(null)
     try {
-      const res = await fetch('/api/review/bulk', {
+      const res = await fetch('/api/classify/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: Array.from(selected), action }),
+        body: JSON.stringify({ all_pending: true, limit: 50 }),
       })
+      const json = await res.json()
       if (res.ok) {
-        setSelected(new Set())
-        loadItems()
-        loadStats()
-      } else {
-        const json = await res.json()
-        setError(json.error)
-      }
-    } catch {
-      setError('Netzwerkfehler')
+        setInfo(
+          `${json.data.success} von ${json.data.total} klassifiziert (${json.data.auto_accepted} auto-akzeptiert, ${json.data.failed} Fehler)`
+        )
+        loadItems(); loadStats()
+      } else setError(json.error)
+    } finally {
+      setBulkClassifying(false)
     }
   }
 
-  const handleRename = async (id: string, title: string) => {
-    if (!title.trim()) return
-    try {
-      const res = await fetch(`/api/review/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title.trim(), status: 'pending' }),
-      })
-      if (res.ok) {
-        setEditingItem(null)
-        loadItems()
-      }
-    } catch {
-      setError('Netzwerkfehler')
-    }
+  const handleAddManual = async (itemId: string, topicId: string) => {
+    const res = await fetch(`/api/review/${itemId}/candidates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic_id: topicId, is_primary: true }),
+    })
+    if (!res.ok) { const j = await res.json(); setError(j.error) }
+    else loadItems()
   }
 
   const toggleSelect = (id: string) => {
     setSelected(prev => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(id)) next.delete(id); else next.add(id)
       return next
     })
   }
@@ -189,17 +222,31 @@ export default function ReviewPage() {
     <div>
       <PageHeader
         title="Review-Queue"
-        description="Eingehende Inhalte prüfen und einordnen"
+        description="KI-Klassifizierung prüfen und Zuordnungen bestätigen"
+        action={
+          <button
+            onClick={handleClassifyAll}
+            disabled={bulkClassifying}
+            className="rounded-md bg-purple-600 px-3 py-1.5 text-xs text-white hover:bg-purple-700 disabled:opacity-50"
+          >
+            {bulkClassifying ? 'Klassifiziere…' : '🧠 Alle pending klassifizieren'}
+          </button>
+        }
       />
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between items-center">
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">✕</button>
+          <button onClick={() => setError(null)} className="text-red-400">✕</button>
+        </div>
+      )}
+      {info && (
+        <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 flex justify-between">
+          <span>{info}</span>
+          <button onClick={() => setInfo(null)} className="text-blue-400">✕</button>
         </div>
       )}
 
-      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {([
           { key: 'pending', label: 'Ausstehend', color: statusColors.pending },
@@ -220,7 +267,6 @@ export default function ReviewPage() {
         ))}
       </div>
 
-      {/* Queue */}
       <div className="rounded-lg border border-gray-200 bg-white">
         <div className="border-b border-gray-100 px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
@@ -229,7 +275,7 @@ export default function ReviewPage() {
             </h2>
             <button
               onClick={() => { setStatusFilter('all'); setPage(1) }}
-              className={`rounded-md px-2 py-1 text-xs transition-colors ${
+              className={`rounded-md px-2 py-1 text-xs ${
                 statusFilter === 'all' ? 'bg-gray-200 text-gray-700' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
@@ -237,211 +283,158 @@ export default function ReviewPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <select
-              value={sourceFilter}
-              onChange={(e) => { setSourceFilter(e.target.value); setPage(1) }}
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs bg-white"
-            >
-              <option value="">Alle Quellen</option>
-              {Object.entries(sourceLabels).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </select>
-
-            {selected.size > 0 && (
-              <div className="flex items-center gap-1 ml-2">
-                <span className="text-xs text-gray-500">{selected.size} gewählt:</span>
-                <button
-                  onClick={() => handleBulk('approve')}
-                  className="rounded-md bg-green-600 px-2.5 py-1 text-xs text-white hover:bg-green-700"
-                >
-                  ✓ Genehmigen
-                </button>
-                <button
-                  onClick={() => handleBulk('reject')}
-                  className="rounded-md bg-red-500 px-2.5 py-1 text-xs text-white hover:bg-red-600"
-                >
-                  ✕ Ablehnen
-                </button>
-                <button
-                  onClick={() => handleBulk('delete')}
-                  className="rounded-md border border-red-200 px-2.5 py-1 text-xs text-red-500 hover:bg-red-50"
-                >
-                  Löschen
-                </button>
-              </div>
-            )}
-          </div>
+          {selected.size > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-500">{selected.size} gewählt:</span>
+              <button onClick={() => handleBulk('approve')} className="rounded-md bg-green-600 px-2.5 py-1 text-xs text-white hover:bg-green-700">✓ Erledigen</button>
+              <button onClick={() => handleBulk('reject')} className="rounded-md bg-red-500 px-2.5 py-1 text-xs text-white hover:bg-red-600">✕ Ablehnen</button>
+              <button onClick={() => handleBulk('delete')} className="rounded-md border border-red-200 px-2.5 py-1 text-xs text-red-500 hover:bg-red-50">Löschen</button>
+            </div>
+          )}
         </div>
 
         {loading ? (
           <div className="p-10 text-center text-sm text-gray-400">Laden…</div>
         ) : items.length === 0 ? (
           <div className="p-10 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-4">
-              <span className="text-xl text-gray-400">✓</span>
-            </div>
             <p className="text-sm text-gray-500 mb-2">Keine Einträge</p>
-            <p className="text-xs text-gray-400">
-              {statusFilter === 'pending'
-                ? 'Keine ausstehenden Einträge. Neue Einträge aus Feeds erscheinen hier.'
-                : 'Keine Einträge mit diesem Filter gefunden.'}
-            </p>
           </div>
         ) : (
           <>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-left text-xs text-gray-400">
-                  <th className="px-3 py-2.5 w-8">
+            <div className="px-3 py-2 border-b border-gray-100 flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={selected.size === items.length && items.length > 0}
+                onChange={toggleSelectAll}
+                className="rounded border-gray-300"
+              />
+              <span className="text-xs text-gray-400">Alle auswählen</span>
+            </div>
+            <ul className="divide-y divide-gray-100">
+              {items.map(item => (
+                <li key={item.id} className="px-4 py-3">
+                  <div className="flex items-start gap-3">
                     <input
                       type="checkbox"
-                      checked={selected.size === items.length && items.length > 0}
-                      onChange={toggleSelectAll}
-                      className="rounded border-gray-300"
+                      checked={selected.has(item.id)}
+                      onChange={() => toggleSelect(item.id)}
+                      className="mt-1 rounded border-gray-300"
                     />
-                  </th>
-                  <th className="px-3 py-2.5">Titel</th>
-                  <th className="px-3 py-2.5 w-24">Quelle</th>
-                  <th className="px-3 py-2.5 w-24">Status</th>
-                  <th className="px-3 py-2.5 w-32">Erstellt</th>
-                  <th className="px-3 py-2.5 w-40">Aktionen</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {items.map(item => (
-                  <tr
-                    key={item.id}
-                    className={`group hover:bg-gray-50/50 transition-colors ${selected.has(item.id) ? 'bg-blue-50/30' : ''}`}
-                  >
-                    <td className="px-3 py-2.5">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(item.id)}
-                        onChange={() => toggleSelect(item.id)}
-                        className="rounded border-gray-300"
-                      />
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {editingItem?.id === item.id ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={editingItem.title}
-                            onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleRename(item.id, editingItem.title)
-                              if (e.key === 'Escape') setEditingItem(null)
-                            }}
-                            autoFocus
-                            className="flex-1 rounded border border-blue-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <button onClick={() => handleRename(item.id, editingItem.title)} className="text-xs text-blue-600 font-medium">OK</button>
-                          <button onClick={() => setEditingItem(null)} className="text-xs text-gray-400">Abb.</button>
-                        </div>
-                      ) : (
-                        <div>
-                          <p
-                            className="text-gray-800 cursor-pointer hover:text-blue-600"
-                            onDoubleClick={() => setEditingItem({ id: item.id, title: item.title })}
-                            title="Doppelklick zum Bearbeiten"
-                          >
-                            {item.title}
-                          </p>
-                          {expandedId === item.id && item.description && (
-                            <p className="mt-1 text-xs text-gray-400 line-clamp-3">{item.description}</p>
-                          )}
-                          {item.source_url && (
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm font-medium text-gray-800">{item.title}</h3>
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusColors[item.status]}`}>
+                          {statusLabels[item.status]}
+                        </span>
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] ${procStateColors[item.processing_state] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {item.processing_state}
+                        </span>
+                        {item.rss_feeds?.name && (
+                          <span className="text-[11px] text-gray-500">{item.rss_feeds.name}</span>
+                        )}
+                      </div>
+                      {item.description && (
+                        <p className="mt-1 text-xs text-gray-600 line-clamp-2">{item.description}</p>
+                      )}
+                      <div className="mt-1 flex items-center gap-3 text-[11px] text-gray-400">
+                        <span>{formatDate(item.created_at)}</span>
+                        {item.published_at && <span>publ. {formatDate(item.published_at)}</span>}
+                        {item.source_url && (
+                          <a href={item.source_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">
+                            Quelle ↗
+                          </a>
+                        )}
+                      </div>
+                      {item.processing_error && (
+                        <p className="mt-1 text-xs text-red-600">⚠ {item.processing_error}</p>
+                      )}
+
+                      {expandedId === item.id && (
+                        <div className="mt-3 border-t border-gray-100 pt-3">
+                          <CandidateList itemId={item.id} onChanged={loadItems} />
+                          <div className="mt-3 flex gap-2 flex-wrap">
                             <button
-                              onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                              className="text-[10px] text-gray-400 hover:text-gray-600 mt-0.5"
+                              onClick={() => setPickerOpen(item.id)}
+                              className="rounded border border-gray-200 px-2 py-1 text-xs hover:bg-gray-50"
                             >
-                              {expandedId === item.id ? 'Weniger ▲' : 'Details ▼'}
+                              + Topic manuell zuordnen
                             </button>
-                          )}
+                            <button
+                              onClick={() => handleReclassify(item.id)}
+                              disabled={classifyingId === item.id}
+                              className="rounded border border-purple-200 px-2 py-1 text-xs text-purple-700 hover:bg-purple-50 disabled:opacity-50"
+                            >
+                              {classifyingId === item.id ? 'läuft…' : '⟳ Neu klassifizieren'}
+                            </button>
+                          </div>
                         </div>
                       )}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className="text-xs text-gray-500">
-                        {item.rss_feeds?.name || sourceLabels[item.source_type] || item.source_type}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium ${statusColors[item.status]}`}>
-                        {statusLabels[item.status]}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-400">
-                      {formatDate(item.created_at)}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-1">
-                        {item.status !== 'approved' && (
-                          <button
-                            onClick={() => handleAction(item.id, 'approved')}
-                            className="rounded border border-green-200 px-2 py-1 text-[10px] text-green-600 hover:bg-green-50 transition-colors"
-                            title="Genehmigen & als Topic anlegen"
-                          >
-                            ✓
-                          </button>
-                        )}
-                        {item.status !== 'rejected' && (
-                          <button
-                            onClick={() => handleAction(item.id, 'rejected')}
-                            className="rounded border border-red-200 px-2 py-1 text-[10px] text-red-500 hover:bg-red-50 transition-colors"
-                          >
-                            ✕
-                          </button>
-                        )}
-                        {item.status !== 'needs_edit' && (
-                          <button
-                            onClick={() => handleAction(item.id, 'needs_edit')}
-                            className="rounded border border-blue-200 px-2 py-1 text-[10px] text-blue-500 hover:bg-blue-50 transition-colors"
-                            title="Zur Bearbeitung markieren"
-                          >
-                            ✎
-                          </button>
-                        )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                        className="rounded border border-gray-200 px-2 py-1 text-[11px] hover:bg-gray-50"
+                      >
+                        {expandedId === item.id ? 'Weniger' : 'Details'}
+                      </button>
+                      {item.processing_state === 'pending' && (
                         <button
-                          onClick={() => handleDelete(item.id)}
-                          className="rounded border border-gray-200 px-2 py-1 text-[10px] text-gray-400 hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
+                          onClick={() => handleClassify(item.id)}
+                          disabled={classifyingId === item.id}
+                          className="rounded border border-purple-200 px-2 py-1 text-[11px] text-purple-700 hover:bg-purple-50 disabled:opacity-50"
                         >
-                          🗑
+                          {classifyingId === item.id ? '…' : '🧠 Klassifizieren'}
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      )}
+                      {item.status !== 'approved' && (
+                        <button
+                          onClick={() => handleAction(item.id, 'approved')}
+                          className="rounded border border-green-200 px-2 py-1 text-[11px] text-green-700 hover:bg-green-50"
+                          title="Als erledigt markieren"
+                        >
+                          ✓ Erledigt
+                        </button>
+                      )}
+                      {item.status !== 'rejected' && (
+                        <button
+                          onClick={() => handleAction(item.id, 'rejected')}
+                          className="rounded border border-red-200 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50"
+                        >
+                          ✕ Ablehnen
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="border-t border-gray-100 px-5 py-3 flex items-center justify-between">
                 <span className="text-xs text-gray-400">Seite {page} von {totalPages}</span>
                 <div className="flex gap-1">
-                  <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    className="rounded border border-gray-200 px-2.5 py-1 text-xs disabled:opacity-30 hover:bg-gray-50"
-                  >
-                    ←
-                  </button>
-                  <button
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages}
-                    className="rounded border border-gray-200 px-2.5 py-1 text-xs disabled:opacity-30 hover:bg-gray-50"
-                  >
-                    →
-                  </button>
+                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} className="rounded border border-gray-200 px-2.5 py-1 text-xs disabled:opacity-30 hover:bg-gray-50">←</button>
+                  <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="rounded border border-gray-200 px-2.5 py-1 text-xs disabled:opacity-30 hover:bg-gray-50">→</button>
                 </div>
               </div>
             )}
           </>
         )}
       </div>
+
+      <TopicPicker
+        open={pickerOpen !== null}
+        onClose={() => setPickerOpen(null)}
+        onPick={topic => {
+          if (pickerOpen) handleAddManual(pickerOpen, topic.id)
+        }}
+      />
     </div>
   )
 }

@@ -1,8 +1,7 @@
 -- Migration: Hilfsfunktionen für die Admin-Plattform
--- Ausführen in: Supabase Dashboard → SQL Editor
+-- Wiederhergestellt nach Refactor (vorher gelöscht).
 
 -- ─── 1. Rekursiver Teilbaum ────────────────────────────────────────────────
--- Gibt alle Topics ab einem Root-Knoten zurück (inkl. Root selbst)
 CREATE OR REPLACE FUNCTION get_topic_subtree(root_id uuid)
 RETURNS TABLE(
   id         uuid,
@@ -30,7 +29,6 @@ AS $$
 $$;
 
 -- ─── 2. Breadcrumb-Pfad ────────────────────────────────────────────────────
--- Gibt alle Vorfahren eines Topics zurück (von Root bis direkt übergeordnet)
 CREATE OR REPLACE FUNCTION get_topic_ancestors(topic_id uuid)
 RETURNS TABLE(
   id    uuid,
@@ -56,7 +54,6 @@ AS $$
 $$;
 
 -- ─── 3. Duplikate finden ──────────────────────────────────────────────────
--- Zeigt Topics mit gleichem Namen (case-insensitive)
 CREATE OR REPLACE VIEW duplicate_topic_names AS
 SELECT
   lower(name) AS name_normalized,

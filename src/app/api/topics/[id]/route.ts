@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
   getTopicDetail,
-  renameTopic,
+  patchTopic,
   deleteTopic,
   moveTopic,
 } from '@/lib/services/topic.service'
@@ -42,14 +42,21 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
     }
 
-    if (parsed.data.name) {
-      const topic = await renameTopic(supabase, id, parsed.data.name)
-      return NextResponse.json({ data: topic })
+    if (parsed.data.name === undefined && parsed.data.description === undefined) {
+      return NextResponse.json({ error: 'Keine Änderung angegeben' }, { status: 400 })
     }
 
-    return NextResponse.json({ error: 'Keine Änderung angegeben' }, { status: 400 })
+    const topic = await patchTopic(supabase, id, {
+      name: parsed.data.name,
+      description: parsed.data.description,
+    })
+    return NextResponse.json({ data: topic })
   } catch (error) {
-    return NextResponse.json({ error: formatError(error) }, { status: 500 })
+    const msg = formatError(error)
+    if (msg.includes('Root-Topic')) {
+      return NextResponse.json({ error: msg }, { status: 403 })
+    }
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
 
@@ -66,6 +73,9 @@ export async function DELETE(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ success: true })
   } catch (error) {
     const msg = formatError(error)
+    if (msg.includes('Root-Topic')) {
+      return NextResponse.json({ error: msg }, { status: 403 })
+    }
     if (msg.includes('untergeordnete')) {
       return NextResponse.json({ error: msg }, { status: 409 })
     }

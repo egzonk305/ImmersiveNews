@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { fetchFeed } from '@/lib/services/feed.service'
+import { classifyItem } from '@/lib/services/classifier.service'
 import { formatError } from '@/lib/utils'
 
-type RouteContext = { params: Promise<{ id: string }> }
+type RouteContext = { params: Promise<{ itemId: string }> }
 
-// POST /api/feeds/[id]/fetch — manueller Abruf eines einzelnen Feeds
+// POST /api/classify/[itemId]
 export async function POST(_req: NextRequest, { params }: RouteContext) {
   try {
-    const { id } = await params
+    const { itemId } = await params
     const supabase = await createClient()
-    const result = await fetchFeed(supabase, id)
-    if (result.error) {
-      return NextResponse.json({ data: result }, { status: 502 })
-    }
+    const result = await classifyItem(supabase, itemId)
     return NextResponse.json({ data: result })
   } catch (error) {
     return NextResponse.json({ error: formatError(error) }, { status: 500 })
