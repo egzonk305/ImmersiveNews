@@ -50,17 +50,20 @@ export async function getAllowedTopics(
   return data ?? []
 }
 
-function tryParseJson(text: string): unknown | null {
+function tryParseJson(text: string, primed = false): unknown | null {
   // Qwen3 <think>...</think> Block entfernen
   const stripped = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+  // Wenn der Prompt mit '{"candidates":[' endet, vervollständigen
+  const full = primed ? `{"candidates":[${stripped}` : stripped
   try {
-    return JSON.parse(stripped)
+    return JSON.parse(full)
   } catch {
-    // letztes JSON-Objekt im Text suchen (robuster als erstes)
-    const matches = [...stripped.matchAll(/\{[\s\S]*?\}/g)]
-    for (let i = matches.length - 1; i >= 0; i--) {
-      try { return JSON.parse(matches[i][0]) } catch { /* weiter */ }
-    }
+    // Abgeschnittenes JSON reparieren: letztes vollständiges Objekt
+    const match = full.match(/\{"candidates":\s*\[[\s\S]*\]/)
+    if (match) try { return JSON.parse(match[0] + '}') } catch { /* weiter */ }
+    // Fallback: erstes vollständiges JSON-Objekt
+    const m2 = full.match(/\{[\s\S]*\}/)
+    if (m2) try { return JSON.parse(m2[0]) } catch { /* weiter */ }
     return null
   }
 }
@@ -115,7 +118,7 @@ export async function classifyItem(
       timeoutMs: 360_000, // 6 Minuten — CPU-Inferenz braucht länger
     })
     rawResponse = result.response
-    parsedJson = tryParseJson(result.response)
+    parsedJson = tryParseJson(result.response, true)
     if (parsedJson === null) {
       runStatus = 'parse_error'
       errorMessage = 'Antwort konnte nicht als JSON geparst werden'
