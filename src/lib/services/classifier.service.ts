@@ -51,17 +51,17 @@ export async function getAllowedTopics(
 }
 
 function tryParseJson(text: string): unknown | null {
+  // Qwen3 <think>...</think> Block entfernen
+  const stripped = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
   try {
-    return JSON.parse(text)
+    return JSON.parse(stripped)
   } catch {
-    // versuche, JSON aus Markdown-Block oder Text zu extrahieren
-    const match = text.match(/\{[\s\S]*\}/)
-    if (!match) return null
-    try {
-      return JSON.parse(match[0])
-    } catch {
-      return null
+    // letztes JSON-Objekt im Text suchen (robuster als erstes)
+    const matches = [...stripped.matchAll(/\{[\s\S]*?\}/g)]
+    for (let i = matches.length - 1; i >= 0; i--) {
+      try { return JSON.parse(matches[i][0]) } catch { /* weiter */ }
     }
+    return null
   }
 }
 

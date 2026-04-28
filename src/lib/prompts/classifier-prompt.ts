@@ -34,18 +34,22 @@ export function buildClassifierPrompt(opts: BuildPromptOptions): PromptResult {
 
   const description = (opts.item.description ?? '').slice(0, 400)
 
-  const prompt = `Klassifiziere diesen Artikel. Antworte NUR als JSON.
+  const prompt = `/no_think
+Klassifiziere den Artikel. Antworte NUR mit dem JSON-Objekt, kein Text davor oder danach.
 
-THEMEN (Nr:Name):
+THEMEN:
 ${topicsList}
 
 ARTIKEL:
 Titel: ${opts.item.title}
 Beschreibung: ${description || '(keine)'}
 
-REGELN: Maximal ${opts.maxCandidates} Kandidaten. Genau einer hat is_primary:true. Nur Nummern aus der Liste verwenden.
+Wähle maximal ${opts.maxCandidates} passende Themen-Nummern aus der Liste. Genau ein Eintrag muss "is_primary":true haben.
 
-{"candidates":[{"n":<nr>,"confidence":<0-1>,"is_primary":<bool>,"reason":"<kurz deutsch>"}]}`
+Beispiel-Antwort:
+{"candidates":[{"n":5,"confidence":0.92,"is_primary":true,"reason":"Passt zum Thema"},{"n":12,"confidence":0.71,"is_primary":false,"reason":"Nebenbezug"}]}
+
+Deine Antwort (nur JSON, Feld "n" ist die Nummer aus der THEMEN-Liste):`
 
   return { prompt, indexMap }
 }
