@@ -51,17 +51,20 @@ export async function getAllowedTopics(
 }
 
 function tryParseJson(text: string, primed = false): unknown | null {
-  // Qwen3 <think>...</think> Block entfernen
-  const stripped = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+  // Qwen3 <think>-Blöcke entfernen — auch abgeschnittene ohne </think>
+  const stripped = text
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/<think>[\s\S]*/g, '')
+    .trim()
   // Wenn der Prompt mit '{"candidates":[' endet, vervollständigen
   const full = primed ? `{"candidates":[${stripped}` : stripped
   try {
     return JSON.parse(full)
   } catch {
-    // Abgeschnittenes JSON reparieren: letztes vollständiges Objekt
+    // Abgeschnittenes JSON reparieren: candidates-Array bis letzter vollständiger Eintrag
     const match = full.match(/\{"candidates":\s*\[[\s\S]*\]/)
     if (match) try { return JSON.parse(match[0] + '}') } catch { /* weiter */ }
-    // Fallback: erstes vollständiges JSON-Objekt
+    // Fallback: erstes vollständiges JSON-Objekt im Text
     const m2 = full.match(/\{[\s\S]*\}/)
     if (m2) try { return JSON.parse(m2[0]) } catch { /* weiter */ }
     return null
