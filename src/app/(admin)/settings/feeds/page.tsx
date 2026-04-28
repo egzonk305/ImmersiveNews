@@ -134,14 +134,19 @@ export default function FeedsSettingsPage() {
       const res = await fetch(`/api/feeds/${id}/fetch`, { method: 'POST' })
       const json = await res.json()
 
-      if (res.ok) {
-        setFetchResult({
-          id,
-          msg: `${json.data.new_items_added} neue Items (${json.data.duplicates_skipped} Duplikate übersprungen)`,
-        })
-        loadFeeds()
+      if (res.ok || json.data) {
+        const d = json.data
+        if (d?.error) {
+          setFetchResult({ id, msg: `Fehler: ${d.error}` })
+        } else {
+          setFetchResult({
+            id,
+            msg: `${d?.new_items_added ?? 0} neue Items (${d?.duplicates_skipped ?? 0} Duplikate übersprungen)`,
+          })
+          loadFeeds()
+        }
       } else {
-        setFetchResult({ id, msg: `Fehler: ${json.error}` })
+        setFetchResult({ id, msg: `Fehler: ${json.error ?? 'Unbekannter Fehler'}` })
       }
     } catch {
       setFetchResult({ id, msg: 'Netzwerkfehler beim Abrufen' })
