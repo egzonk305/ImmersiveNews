@@ -34,8 +34,7 @@ export function buildClassifierPrompt(opts: BuildPromptOptions): PromptResult {
 
   const description = (opts.item.description ?? '').slice(0, 400)
 
-  const prompt = `/no_think
-Antworte NUR mit einem JSON-Objekt in exakt diesem Format:
+  const prompt = `Antworte NUR mit einem JSON-Objekt in exakt diesem Format:
 {"candidates":[{"n":NUMMER,"confidence":0.0-1.0,"is_primary":true,"reason":"Begründung"}]}
 
 Feld "n" = Nummer aus der Themenliste unten. Maximal ${opts.maxCandidates} Kandidaten. Genau einer hat is_primary:true.
