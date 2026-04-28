@@ -5,12 +5,17 @@ import Link from 'next/link'
 
 interface DashboardStats {
   active_feeds: number
-  total_items: number
   pending_items: number
+  processing_items: number
   classified_items: number
   failed_items: number
   done_items: number
-  avg_confidence: number | null
+  review_pending: number
+  items_last_24h: number
+  avg_primary_confidence: number | null
+}
+
+interface RunStats {
   total_runs: number
   successful_runs: number
   failed_runs: number
@@ -54,6 +59,7 @@ interface DashData {
   recentRuns: RecentRun[]
   recentFeeds: RecentFeed[]
   lowConfidence: LowConfItem[]
+  runStats: RunStats
 }
 
 const statusColors: Record<string, string> = {
@@ -108,10 +114,10 @@ export default function DashboardPage() {
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <p className="text-xs text-gray-500 mb-1">Ø Konfidenz (primary)</p>
           <p className="text-2xl font-medium text-gray-800">
-            {s?.avg_confidence != null ? `${(s.avg_confidence * 100).toFixed(1)}%` : '–'}
+            {s?.avg_primary_confidence != null ? `${(s.avg_primary_confidence * 100).toFixed(1)}%` : '–'}
           </p>
           <p className="mt-2 text-xs text-gray-500">
-            {s?.successful_runs ?? 0} ok · {s?.failed_runs ?? 0} fehlgeschlagen ({s?.total_runs ?? 0} gesamt)
+            {data?.runStats.successful_runs ?? 0} ok · {data?.runStats.failed_runs ?? 0} fehlgeschlagen ({data?.runStats.total_runs ?? 0} gesamt)
           </p>
         </div>
 

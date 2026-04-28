@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type {
   Database,
+  Json,
   ClassifierSettings,
   IncomingItem,
   TopicWithPath,
@@ -150,7 +151,7 @@ export async function classifyItem(
       duration_ms: durationMs,
       prompt,
       raw_response: rawResponse || null,
-      parsed_response: (parsedJson as Record<string, unknown>) ?? null,
+      parsed_response: (parsedJson as Json) ?? null,
       error_message: errorMessage,
     })
     .select('id')

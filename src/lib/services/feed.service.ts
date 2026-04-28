@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Database, RssFeed } from '@/lib/types/database.types'
+import type { Database, Json, RssFeed } from '@/lib/types/database.types'
 
 export interface ParsedRssItem {
   title: string
@@ -188,7 +188,7 @@ export async function fetchFeed(
       feed_id: feedId,
       source_url: item.link,
       published_at: parsePubDate(item.pubDate),
-      raw_data: item as unknown as Record<string, unknown>,
+      raw_data: item as unknown as Json,
       status: 'pending' as const,
       processing_state: 'pending' as const,
     }))

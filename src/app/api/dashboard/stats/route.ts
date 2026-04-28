@@ -13,6 +13,8 @@ export async function GET() {
       recentRuns,
       recentFeeds,
       lowConfidence,
+      totalRuns,
+      successRuns,
     ] = await Promise.all([
       supabase.from('dashboard_stats').select('*').single(),
       supabase.from('items_per_root').select('*'),
@@ -27,7 +29,12 @@ export async function GET() {
         .order('last_fetched_at', { ascending: false, nullsFirst: false })
         .limit(5),
       supabase.from('low_confidence_items').select('*').limit(10),
+      supabase.from('classification_runs').select('*', { count: 'exact', head: true }),
+      supabase.from('classification_runs').select('*', { count: 'exact', head: true }).eq('status', 'success'),
     ])
+
+    const total = totalRuns.count ?? 0
+    const ok = successRuns.count ?? 0
 
     return NextResponse.json({
       data: {
@@ -36,6 +43,7 @@ export async function GET() {
         recentRuns: recentRuns.data ?? [],
         recentFeeds: recentFeeds.data ?? [],
         lowConfidence: lowConfidence.data ?? [],
+        runStats: { total_runs: total, successful_runs: ok, failed_runs: total - ok },
       },
     })
   } catch (error) {

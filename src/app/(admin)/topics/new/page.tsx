@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { TopicForm } from '@/components/topics/TopicForm'
+import type { Topic } from '@/lib/types/database.types'
 import Link from 'next/link'
 
 export default async function NewTopicPage({
@@ -11,13 +12,13 @@ export default async function NewTopicPage({
   const { parent_id } = await searchParams
   const supabase = await createClient()
 
-  let parentTopic = null
+  let parentTopic: Topic | null = null
   if (parent_id) {
     const { data } = await supabase
       .from('topics')
       .select('*')
       .eq('id', parent_id)
-      .single()
+      .single<Topic>()
     parentTopic = data
   }
 

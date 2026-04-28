@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { classifierSettingsUpdateSchema } from '@/lib/validators/classifier.schema'
 import { formatError } from '@/lib/utils'
+import type { ClassifierSettingsUpdate } from '@/lib/types/database.types'
 
 // GET /api/classifier-settings — Singleton lesen
 export async function GET() {
@@ -42,22 +43,14 @@ export async function PATCH(request: NextRequest) {
       .single()
 
     if (fetchErr || !current) {
-      // Erstinsert
-      const { data, error } = await supabase
-        .from('classifier_settings')
-        .insert({ ...parsed.data })
-        .select()
-        .single()
+      // @ts-ignore — Supabase v2.100+: classifier_settings hat alle Felder optional → never
+      const { data, error } = await (supabase.from('classifier_settings').insert(parsed.data).select().single())
       if (error) throw new Error(error.message)
       return NextResponse.json({ data })
     }
 
-    const { data, error } = await supabase
-      .from('classifier_settings')
-      .update(parsed.data)
-      .eq('id', current.id)
-      .select()
-      .single()
+    // @ts-ignore — Supabase v2.100+: classifier_settings hat alle Felder optional → never
+    const { data, error } = await (supabase.from('classifier_settings').update(parsed.data).eq('id', current.id).select().single())
 
     if (error) throw new Error(error.message)
     return NextResponse.json({ data })

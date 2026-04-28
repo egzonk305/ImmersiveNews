@@ -5,17 +5,14 @@ import { cn } from '@/lib/utils'
 import { TopicTreeBrowser } from './TopicTreeBrowser'
 import { TopicTableView } from './TopicTableView'
 import type { TopicNode } from '@/lib/types/app.types'
-import type { Topic } from '@/lib/types/database.types'
 
 interface TopicViewSwitcherProps {
   roots: TopicNode[]
-  initialTableData: Topic[]
-  initialCount: number
 }
 
 type ViewMode = 'tree' | 'table'
 
-export function TopicViewSwitcher({ roots, initialTableData, initialCount }: TopicViewSwitcherProps) {
+export function TopicViewSwitcher({ roots }: TopicViewSwitcherProps) {
   const [view, setView] = useState<ViewMode>('table')
 
   return (
@@ -45,7 +42,7 @@ export function TopicViewSwitcher({ roots, initialTableData, initialCount }: Top
       {view === 'tree' ? (
         <TopicTreeBrowser roots={roots} />
       ) : (
-        <TopicTableView initialData={initialTableData} initialCount={initialCount} />
+        <TopicTableView />
       )}
     </div>
   )
