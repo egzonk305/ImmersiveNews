@@ -64,6 +64,7 @@ export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
     options: {
       temperature: opts.temperature ?? 0.2,
       num_ctx: 8192,
+      num_predict: 400,
     },
   }
 
