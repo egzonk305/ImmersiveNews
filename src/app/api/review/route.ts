@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('incoming_items')
-      .select('*, rss_feeds(id, name, url)', { count: 'exact' })
+      .select('*, rss_feeds!feed_id(id, name, url)', { count: 'exact' })
 
     if (status !== 'all') {
       query = query.eq('status', status)
