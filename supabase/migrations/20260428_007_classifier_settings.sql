@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS classifier_settings (
   ollama_base_url text NOT NULL DEFAULT 'http://localhost:11434',
   model_name text NOT NULL DEFAULT 'qwen3:1.7b',
   max_candidates int NOT NULL DEFAULT 3 CHECK (max_candidates BETWEEN 1 AND 10),
-  max_depth int NOT NULL DEFAULT 5 CHECK (max_depth BETWEEN 1 AND 5),
+  max_depth int NOT NULL DEFAULT 3 CHECK (max_depth BETWEEN 1 AND 5),
   confidence_threshold numeric(4,3) NOT NULL DEFAULT 0.85
     CHECK (confidence_threshold >= 0 AND confidence_threshold <= 1),
   auto_accept_enabled boolean NOT NULL DEFAULT false,
