@@ -173,14 +173,18 @@ export default function ReviewPage() {
     setBulkClassifying(true)
     bulkStopRef.current = false
 
-    // Alle pending IDs laden
-    const res = await fetch('/api/review?status=pending&pageSize=500&page=1')
-    const json = await res.json()
-    if (!res.ok) { setError(json.error); setBulkClassifying(false); return }
+    // Alle unklassifizierten IDs laden (processing_state = pending oder failed)
+    const [r1, r2] = await Promise.all([
+      fetch('/api/review?status=all&processing_state=pending&pageSize=500&page=1'),
+      fetch('/api/review?status=all&processing_state=failed&pageSize=500&page=1'),
+    ])
+    const [j1, j2] = await Promise.all([r1.json(), r2.json()])
+    if (!r1.ok) { setError(j1.error); setBulkClassifying(false); return }
 
-    const ids: string[] = (json.data ?? [])
-      .filter((i: { processing_state: string }) => i.processing_state === 'pending')
-      .map((i: { id: string }) => i.id)
+    const ids: string[] = [
+      ...(j1.data ?? []).map((i: { id: string }) => i.id),
+      ...(j2.data ?? []).map((i: { id: string }) => i.id),
+    ]
 
     if (ids.length === 0) { setInfo('Keine pending Items.'); setBulkClassifying(false); return }
 

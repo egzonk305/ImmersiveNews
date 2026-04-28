@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || 'pending'
     const source = searchParams.get('source')
+    const processingState = searchParams.get('processing_state')
     const page = parseInt(searchParams.get('page') || '1')
     const pageSize = parseInt(searchParams.get('pageSize') || '20')
 
@@ -24,6 +25,10 @@ export async function GET(request: NextRequest) {
 
     if (status !== 'all') {
       query = query.eq('status', status)
+    }
+
+    if (processingState) {
+      query = query.eq('processing_state', processingState)
     }
 
     if (source) {
