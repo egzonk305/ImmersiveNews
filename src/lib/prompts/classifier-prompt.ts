@@ -13,43 +13,39 @@ export interface BuildPromptOptions {
   maxDepth: number
 }
 
-export function buildClassifierPrompt(opts: BuildPromptOptions): string {
-  const topicsList = opts.allowedTopics
-    .filter(t => t.level <= opts.maxDepth)
-    .map(t => `- ${t.id} | ${t.full_path}`)
-    .join('\n')
+export interface PromptResult {
+  prompt: string
+  indexMap: Record<number, string> // index → topic_id
+}
 
-  const content = (opts.item.content ?? opts.item.description ?? '').slice(0, 2000)
+// Baut einen kompakten Prompt — Topics als nummerierte Kurzliste statt UUIDs+Pfade.
+// Reduziert Token-Anzahl von ~16k auf ~2-3k.
+export function buildClassifierPrompt(opts: BuildPromptOptions): PromptResult {
+  const filtered = opts.allowedTopics.filter(t => t.level <= opts.maxDepth)
 
-  return `Du bist ein deutschsprachiger Nachrichten-Klassifikator. Deine Aufgabe: ordne den folgenden Artikel den passendsten Pfaden aus dem Themenbaum zu.
+  const indexMap: Record<number, string> = {}
+  const topicsList = filtered.map((t, i) => {
+    indexMap[i + 1] = t.id
+    // Nur letzten Teil des Pfades anzeigen spart Token
+    const parts = t.full_path.split(' > ')
+    const label = parts.length > 2 ? parts.slice(-2).join(' > ') : t.full_path
+    return `${i + 1}:${label}`
+  }).join('\n')
 
-REGELN:
-- Wähle ausschließlich aus den unten gelisteten Topic-IDs.
-- Erfinde KEINE neuen Topics, KEINE neuen Root-Themen, KEINE freien Kategorien.
-- Maximal ${opts.maxCandidates} Kandidaten.
-- Genau EIN Kandidat hat is_primary: true.
-- "confidence" ist eine Zahl zwischen 0 und 1.
-- "reason" ist eine kurze deutsche Begründung (max. 200 Zeichen).
-- Antworte STRENG als JSON, ohne Markdown, ohne Kommentare, ohne Erklärung außerhalb des JSON.
+  const description = (opts.item.description ?? '').slice(0, 400)
 
-ERLAUBTE TOPICS (id | pfad):
+  const prompt = `Klassifiziere diesen Artikel. Antworte NUR als JSON.
+
+THEMEN (Nr:Name):
 ${topicsList}
 
 ARTIKEL:
 Titel: ${opts.item.title}
-Beschreibung: ${opts.item.description ?? '(keine)'}
-Inhalt: ${content || '(kein zusätzlicher Inhalt)'}
+Beschreibung: ${description || '(keine)'}
 
-ANTWORTFORMAT:
-{
-  "candidates": [
-    {
-      "topic_id": "<uuid>",
-      "path": ["Sport", "Fußball", "Bundesliga"],
-      "confidence": 0.91,
-      "is_primary": true,
-      "reason": "kurze Begründung"
-    }
-  ]
-}`
+REGELN: Maximal ${opts.maxCandidates} Kandidaten. Genau einer hat is_primary:true. Nur Nummern aus der Liste verwenden.
+
+{"candidates":[{"n":<nr>,"confidence":<0-1>,"is_primary":<bool>,"reason":"<kurz deutsch>"}]}`
+
+  return { prompt, indexMap }
 }

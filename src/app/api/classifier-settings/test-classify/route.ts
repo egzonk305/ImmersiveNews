@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getSettings, getAllowedTopics } from '@/lib/services/classifier.service'
 import { generate } from '@/lib/services/ollama.client'
 import { buildClassifierPrompt } from '@/lib/prompts/classifier-prompt'
-import { classifierResponseSchema } from '@/lib/validators/classifier.schema'
+import { compactResponseSchema } from '@/lib/validators/classifier.schema'
 import { formatError } from '@/lib/utils'
 import { z } from 'zod'
 
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     const settings = await getSettings(supabase)
     const allowed = await getAllowedTopics(supabase)
-    const prompt = buildClassifierPrompt({
+    const { prompt, indexMap } = buildClassifierPrompt({
       item: payload,
       allowedTopics: allowed.map(t => ({ id: t.id, full_path: t.full_path, level: t.level })),
       maxCandidates: settings.max_candidates,
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       prompt,
       format: 'json',
       temperature: 0.2,
+      timeoutMs: 360_000,
     })
     const duration_ms = Date.now() - start
 
@@ -60,9 +61,12 @@ export async function POST(request: NextRequest) {
     }
 
     const validated = parsed
-      ? classifierResponseSchema.safeParse(parsed)
+      ? compactResponseSchema.safeParse(parsed)
       : null
     const allowedIds = new Set(allowed.map(t => t.id))
+    const validCount = validated?.success
+      ? validated.data.candidates.filter(c => !!indexMap[c.n] && allowedIds.has(indexMap[c.n])).length
+      : 0
 
     return NextResponse.json({
       data: {
@@ -73,9 +77,7 @@ export async function POST(request: NextRequest) {
         parsed,
         schema_valid: validated?.success ?? false,
         schema_error: validated?.success ? null : validated?.error.errors[0]?.message,
-        valid_topic_ids: validated?.success
-          ? validated.data.candidates.filter(c => allowedIds.has(c.topic_id)).length
-          : 0,
+        valid_topic_ids: validCount,
         total_candidates: validated?.success ? validated.data.candidates.length : 0,
       },
     })

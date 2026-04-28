@@ -9,7 +9,7 @@ import type {
 import { generate, OllamaError } from '@/lib/services/ollama.client'
 import { buildClassifierPrompt } from '@/lib/prompts/classifier-prompt'
 import {
-  classifierResponseSchema,
+  compactResponseSchema,
   type ClassifierCandidate,
 } from '@/lib/validators/classifier.schema'
 
@@ -86,15 +86,13 @@ export async function classifyItem(
     .eq('id', itemId)
 
   const allowed = await getAllowedTopics(supabase)
-  // Nur Topics, die mindestens Level 2 erreichen (Roots sind selten richtig als final)
-  // Aber wir lassen alle Topics zu — die KI entscheidet selbst.
   const allowedFlat = allowed.map(t => ({
     id: t.id,
     full_path: t.full_path,
     level: t.level,
   }))
 
-  const prompt = buildClassifierPrompt({
+  const { prompt, indexMap } = buildClassifierPrompt({
     item: { title: item.title, description: item.description, content: item.content },
     allowedTopics: allowedFlat,
     maxCandidates: settings.max_candidates,
@@ -114,6 +112,7 @@ export async function classifyItem(
       prompt,
       format: 'json',
       temperature: 0.2,
+      timeoutMs: 360_000, // 6 Minuten — CPU-Inferenz braucht länger
     })
     rawResponse = result.response
     parsedJson = tryParseJson(result.response)
@@ -121,11 +120,22 @@ export async function classifyItem(
       runStatus = 'parse_error'
       errorMessage = 'Antwort konnte nicht als JSON geparst werden'
     } else {
-      const validated = classifierResponseSchema.safeParse(parsedJson)
+      const validated = compactResponseSchema.safeParse(parsedJson)
       if (!validated.success) {
         runStatus = 'parse_error'
         errorMessage = `Schema-Validierung fehlgeschlagen: ${validated.error.errors[0].message}`
       } else {
+        // Nummern-Indices zurück auf UUIDs mappen
+        parsedJson = {
+          candidates: validated.data.candidates
+            .map(c => ({
+              topic_id: indexMap[c.n],
+              confidence: c.confidence,
+              is_primary: c.is_primary,
+              reason: c.reason ?? null,
+            }))
+            .filter(c => !!c.topic_id),
+        }
         runStatus = 'success'
       }
     }
@@ -179,9 +189,9 @@ export async function classifyItem(
   }
 
   // Kandidaten validieren: alle topic_ids müssen in DB existieren
-  const validated = classifierResponseSchema.parse(parsedJson)
   const allowedIds = new Set(allowed.map(t => t.id))
-  const validCandidates = validated.candidates.filter(c => allowedIds.has(c.topic_id))
+  const mappedCandidates = (parsedJson as { candidates: ClassifierCandidate[] }).candidates
+  const validCandidates = mappedCandidates.filter(c => allowedIds.has(c.topic_id))
 
   if (validCandidates.length === 0) {
     await supabase
