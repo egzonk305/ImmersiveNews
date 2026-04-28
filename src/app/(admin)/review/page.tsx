@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { CandidateList } from '@/components/review/CandidateList'
 import { TopicPicker } from '@/components/review/TopicPicker'
@@ -53,6 +53,8 @@ export default function ReviewPage() {
   const [count, setCount] = useState(0)
   const [classifyingId, setClassifyingId] = useState<string | null>(null)
   const [bulkClassifying, setBulkClassifying] = useState(false)
+  const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; success: number; failed: number } | null>(null)
+  const bulkStopRef = useRef(false)
   const [pickerOpen, setPickerOpen] = useState<string | null>(null)
   const pageSize = 20
 
@@ -166,25 +168,39 @@ export default function ReviewPage() {
   }
 
   const handleClassifyAll = async () => {
-    if (!confirm('Alle pending Items klassifizieren? Das kann eine Weile dauern.')) return
-    setBulkClassifying(true)
+    if (!confirm('Alle pending Items klassifizieren?')) return
     setError(null); setInfo(null)
-    try {
-      const res = await fetch('/api/classify/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ all_pending: true, limit: 50 }),
-      })
-      const json = await res.json()
-      if (res.ok) {
-        setInfo(
-          `${json.data.success} von ${json.data.total} klassifiziert (${json.data.auto_accepted} auto-akzeptiert, ${json.data.failed} Fehler)`
-        )
-        loadItems(); loadStats()
-      } else setError(json.error)
-    } finally {
-      setBulkClassifying(false)
+    setBulkClassifying(true)
+    bulkStopRef.current = false
+
+    // Alle pending IDs laden
+    const res = await fetch('/api/review?status=pending&pageSize=500&page=1')
+    const json = await res.json()
+    if (!res.ok) { setError(json.error); setBulkClassifying(false); return }
+
+    const ids: string[] = (json.data ?? [])
+      .filter((i: { processing_state: string }) => i.processing_state === 'pending')
+      .map((i: { id: string }) => i.id)
+
+    if (ids.length === 0) { setInfo('Keine pending Items.'); setBulkClassifying(false); return }
+
+    let success = 0, failed = 0
+    setBulkProgress({ current: 0, total: ids.length, success: 0, failed: 0 })
+
+    for (let i = 0; i < ids.length; i++) {
+      if (bulkStopRef.current) break
+      try {
+        const r = await fetch(`/api/classify/${ids[i]}`, { method: 'POST' })
+        const j = await r.json()
+        if (r.ok && j.data?.status === 'success') success++; else failed++
+      } catch { failed++ }
+      setBulkProgress({ current: i + 1, total: ids.length, success, failed })
     }
+
+    setInfo(`${success} von ${ids.length} klassifiziert (${failed} Fehler)`)
+    setBulkProgress(null)
+    setBulkClassifying(false)
+    loadItems(); loadStats()
   }
 
   const handleAddManual = async (itemId: string, topicId: string) => {
@@ -224,13 +240,35 @@ export default function ReviewPage() {
         title="Review-Queue"
         description="KI-Klassifizierung prüfen und Zuordnungen bestätigen"
         action={
-          <button
-            onClick={handleClassifyAll}
-            disabled={bulkClassifying}
-            className="rounded-md bg-purple-600 px-3 py-1.5 text-xs text-white hover:bg-purple-700 disabled:opacity-50"
-          >
-            {bulkClassifying ? 'Klassifiziere…' : '🧠 Alle pending klassifizieren'}
-          </button>
+          <div className="flex items-center gap-3">
+            {bulkProgress && (
+              <div className="flex items-center gap-2">
+                <div className="w-32 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                  <div
+                    className="h-full bg-purple-500 transition-all"
+                    style={{ width: `${Math.round((bulkProgress.current / bulkProgress.total) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-xs text-gray-500 whitespace-nowrap">
+                  {bulkProgress.current}/{bulkProgress.total}
+                  {bulkProgress.failed > 0 && <span className="text-red-500"> · {bulkProgress.failed} Fehler</span>}
+                </span>
+                <button
+                  onClick={() => { bulkStopRef.current = true }}
+                  className="rounded border border-red-200 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
+                >
+                  Stopp
+                </button>
+              </div>
+            )}
+            <button
+              onClick={handleClassifyAll}
+              disabled={bulkClassifying}
+              className="rounded-md bg-purple-600 px-3 py-1.5 text-xs text-white hover:bg-purple-700 disabled:opacity-50"
+            >
+              {bulkClassifying ? 'Klassifiziere…' : '🧠 Alle pending klassifizieren'}
+            </button>
+          </div>
         }
       />
 

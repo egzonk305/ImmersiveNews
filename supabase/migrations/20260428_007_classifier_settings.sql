@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS classifier_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   ollama_base_url text NOT NULL DEFAULT 'http://localhost:11434',
-  model_name text NOT NULL DEFAULT 'qwen3:8b',
+  model_name text NOT NULL DEFAULT 'qwen3:1.7b',
   max_candidates int NOT NULL DEFAULT 3 CHECK (max_candidates BETWEEN 1 AND 10),
   max_depth int NOT NULL DEFAULT 5 CHECK (max_depth BETWEEN 1 AND 5),
   confidence_threshold numeric(4,3) NOT NULL DEFAULT 0.85
@@ -20,5 +20,5 @@ CREATE TRIGGER classifier_settings_set_updated_at
 
 -- Initiale Default-Zeile (idempotent)
 INSERT INTO classifier_settings (ollama_base_url, model_name)
-SELECT 'http://localhost:11434', 'qwen3:8b'
+SELECT 'http://localhost:11434', 'qwen3:1.7b'
 WHERE NOT EXISTS (SELECT 1 FROM classifier_settings);
