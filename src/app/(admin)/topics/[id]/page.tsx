@@ -22,6 +22,19 @@ export default async function TopicDetailPage({
 
   const { topic, children, ancestors } = detail
 
+  const { data: articles } = await supabase
+    .from('incoming_item_topics')
+    .select('incoming_items:incoming_item_id(id, title, description, source_url, published_at)')
+    .eq('topic_id', id)
+    .eq('is_primary', true)
+    .neq('status', 'rejected')
+    .order('incoming_item_id', { ascending: false })
+    .limit(20)
+
+  const approvedArticles = (articles ?? [])
+    .map(r => r.incoming_items)
+    .filter((item): item is NonNullable<typeof item> => item !== null)
+
   return (
     <div>
       <nav className="mb-4 flex items-center gap-1 text-sm text-gray-400">
@@ -40,46 +53,97 @@ export default async function TopicDetailPage({
       </nav>
 
       <PageHeader
-        title={topic.is_fixed_root ? `🔒 ${topic.name}` : topic.name}
+        title={topic.name}
         description={`${levelLabel(topic.level)} · Erstellt ${formatDate(topic.created_at)}${topic.is_fixed_root ? ' · Geschütztes Root-Thema' : ''}`}
+        icon={topic.is_fixed_root ? '🔒' : '☰'}
         action={
-          <div className="flex gap-2">
+          <>
             <Link
               href={`/topics/new?parent_id=${topic.id}`}
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
             >
-              + Unterthema
+              ＋ Unterthema
             </Link>
             <Link
               href={`/topics/${topic.id}/edit`}
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
             >
-              Bearbeiten
+              ✎ Bearbeiten
             </Link>
-          </div>
+          </>
         }
       />
 
+      <div className="mb-6 grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <p className="text-xs text-gray-400 mb-1">Ebene</p>
+          <p className="text-gray-800 font-medium">{levelLabel(topic.level)}</p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <p className="text-xs text-gray-400 mb-1">Unterthemen</p>
+          <p className="text-gray-800 font-medium">{children.length}</p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <p className="text-xs text-gray-400 mb-1">Artikel</p>
+          <p className="text-gray-800 font-medium">{approvedArticles.length}</p>
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <p className="text-xs text-gray-400 mb-1">ID</p>
+          <p className="truncate font-mono text-xs text-gray-500" title={topic.id}>{topic.id.slice(0, 8)}…</p>
+        </div>
+      </div>
+
       {topic.description && (
-        <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50/40 p-4 text-sm text-gray-700">
-          <p className="mb-1 text-xs uppercase tracking-wide text-blue-700">Beschreibung</p>
+        <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50/40 p-4 text-sm text-gray-700">
+          <p className="mb-1 text-xs uppercase tracking-wide text-blue-700">Themen-Beschreibung</p>
           <p className="whitespace-pre-wrap">{topic.description}</p>
         </div>
       )}
 
-      <div className="mb-6 grid grid-cols-3 gap-4 rounded-lg border border-gray-200 bg-white p-4 text-sm">
-        <div>
-          <p className="mb-1 text-xs text-gray-400">ID</p>
-          <p className="truncate font-mono text-xs text-gray-600">{topic.id}</p>
+      <div className="mb-6 rounded-lg border border-gray-200 bg-white">
+        <div className="border-b border-gray-100 px-5 py-3 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-gray-700">
+            📰 Artikel in diesem Thema {approvedArticles.length > 0 && `(${approvedArticles.length})`}
+          </h2>
+          <Link href="/review" className="text-xs text-blue-600 hover:underline">
+            Review-Queue →
+          </Link>
         </div>
-        <div>
-          <p className="mb-1 text-xs text-gray-400">Ebene</p>
-          <p className="text-gray-700">{levelLabel(topic.level)}</p>
-        </div>
-        <div>
-          <p className="mb-1 text-xs text-gray-400">Unterthemen</p>
-          <p className="text-gray-700">{children.length}</p>
-        </div>
+        {approvedArticles.length > 0 ? (
+          <ul className="divide-y divide-gray-100">
+            {approvedArticles.map((item) => {
+              const a = item as unknown as { id: string; title: string; description?: string | null; source_url?: string | null; published_at?: string | null }
+              return (
+                <li key={a.id} className="px-5 py-3 hover:bg-gray-50/50 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-800">{a.title}</p>
+                      {a.description && (
+                        <p className="mt-1 text-xs text-gray-600 line-clamp-2">{a.description}</p>
+                      )}
+                      {a.published_at && (
+                        <p className="mt-1 text-[11px] text-gray-400">{formatDate(a.published_at)}</p>
+                      )}
+                    </div>
+                    {a.source_url && (
+                      <a href={a.source_url} target="_blank" rel="noreferrer" className="shrink-0 rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-600 hover:bg-white hover:text-blue-600">
+                        Quelle ↗
+                      </a>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <div className="px-5 py-10 text-center">
+            <p className="text-sm text-gray-400 mb-2">Noch keine Artikel klassifiziert</p>
+            <p className="text-xs text-gray-400">
+              Artikel erscheinen hier nach dem Klassifizieren in der{' '}
+              <Link href="/review" className="text-blue-600 hover:underline">Review-Queue</Link>.
+            </p>
+          </div>
+        )}
       </div>
 
       {children.length > 0 ? (

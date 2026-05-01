@@ -13,12 +13,13 @@ export default async function TopicsPage() {
       <PageHeader
         title="Topics"
         description="Themenstruktur der Wissensdatenbank"
+        icon="☰"
         action={
           <Link
             href="/topics/new"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white transition-colors hover:bg-blue-700"
+            className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3.5 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-700 shadow-sm"
           >
-            + Neues Topic
+            <span>＋</span> Neues Topic
           </Link>
         }
       />

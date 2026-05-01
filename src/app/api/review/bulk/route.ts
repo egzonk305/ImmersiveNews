@@ -59,7 +59,6 @@ export async function POST(request: NextRequest) {
       affected = ids.length
 
       if (action === 'approve' && target_topic_id) {
-        // bestehende primaries auf false setzen
         await supabase
           .from('incoming_item_topics')
           .update({ is_primary: false })
@@ -79,6 +78,28 @@ export async function POST(request: NextRequest) {
         await supabase
           .from('incoming_item_topics')
           .upsert(inserts, { onConflict: 'incoming_item_id,topic_id' })
+      } else if (action === 'approve' && !target_topic_id) {
+        // Implizite Bestätigung: pro Item primary-Kandidat confirmen
+        const { data: primaries } = await supabase
+          .from('incoming_item_topics')
+          .select('incoming_item_id, topic_id')
+          .in('incoming_item_id', ids)
+          .eq('is_primary', true)
+
+        if (primaries && primaries.length > 0) {
+          await supabase
+            .from('incoming_item_topics')
+            .update({ status: 'confirmed' })
+            .in('incoming_item_id', primaries.map(p => p.incoming_item_id))
+            .eq('is_primary', true)
+
+          for (const p of primaries) {
+            await supabase
+              .from('incoming_items')
+              .update({ target_topic_id: p.topic_id })
+              .eq('id', p.incoming_item_id)
+          }
+        }
       }
     }
 

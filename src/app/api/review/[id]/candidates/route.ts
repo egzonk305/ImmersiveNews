@@ -16,7 +16,21 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
       .eq('incoming_item_id', id)
       .order('rank', { ascending: true })
     if (error) throw new Error(error.message)
-    return NextResponse.json({ data })
+
+    const topicIds = (data ?? []).map(r => r.topic_id)
+    const { data: paths } = topicIds.length
+      ? await supabase
+          .from('topics_with_path')
+          .select('id, full_path')
+          .in('id', topicIds)
+      : { data: [] }
+    const pathMap = Object.fromEntries((paths ?? []).map(p => [p.id, p.full_path]))
+
+    const enriched = (data ?? []).map(r => ({
+      ...r,
+      topics: r.topics ? { ...r.topics, full_path: pathMap[r.topic_id] ?? null } : null,
+    }))
+    return NextResponse.json({ data: enriched })
   } catch (error) {
     return NextResponse.json({ error: formatError(error) }, { status: 500 })
   }

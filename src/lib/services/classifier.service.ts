@@ -51,23 +51,97 @@ export async function getAllowedTopics(
 }
 
 function tryParseJson(text: string, primed = false): unknown | null {
-  // Qwen3 <think>-Blöcke entfernen — auch abgeschnittene ohne </think>
   const stripped = text
     .replace(/<think>[\s\S]*?<\/think>/g, '')
     .replace(/<think>[\s\S]*/g, '')
     .trim()
-  // Wenn der Prompt mit '{"candidates":[' endet, vervollständigen
   const full = primed ? `{"candidates":[${stripped}` : stripped
+
   try {
     return JSON.parse(full)
   } catch {
-    // Abgeschnittenes JSON reparieren: candidates-Array bis letzter vollständiger Eintrag
-    const match = full.match(/\{"candidates":\s*\[[\s\S]*\]/)
-    if (match) try { return JSON.parse(match[0] + '}') } catch { /* weiter */ }
-    // Fallback: erstes vollständiges JSON-Objekt im Text
-    const m2 = full.match(/\{[\s\S]*\}/)
-    if (m2) try { return JSON.parse(m2[0]) } catch { /* weiter */ }
+    // Abgeschnittenes candidates-Array: letzten unvollständigen Eintrag abschneiden, schließen
+    const arrayStart = full.indexOf('{"candidates":[')
+    if (arrayStart !== -1) {
+      const inner = full.slice(arrayStart + '{"candidates":['.length)
+      // Alle vollständigen {...}-Objekte extrahieren
+      const objects: string[] = []
+      let depth = 0, start = -1
+      for (let i = 0; i < inner.length; i++) {
+        if (inner[i] === '{') { if (depth === 0) start = i; depth++ }
+        else if (inner[i] === '}') {
+          depth--
+          if (depth === 0 && start !== -1) { objects.push(inner.slice(start, i + 1)); start = -1 }
+        }
+      }
+      if (objects.length > 0) {
+        try { return JSON.parse(`{"candidates":[${objects.join(',')}]}`) } catch { /* weiter */ }
+      }
+    }
+    // Letzter Fallback: erstes vollständiges JSON-Objekt
+    const m = full.match(/\{[\s\S]*\}/)
+    if (m) try { return JSON.parse(m[0]) } catch { /* weiter */ }
     return null
+  }
+}
+
+interface StageResult {
+  candidates: ClassifierCandidate[]
+  prompt: string
+  rawResponse: string
+  error: string | null
+}
+
+async function runStage(
+  settings: ClassifierSettings,
+  itemForPrompt: { title: string; description: string | null; content: string | null },
+  topics: TopicWithPath[],
+  maxCandidates: number,
+  maxDepth: number
+): Promise<StageResult> {
+  const flat = topics.map(t => ({ id: t.id, full_path: t.full_path, level: t.level }))
+  const { prompt, indexMap } = buildClassifierPrompt({
+    item: itemForPrompt,
+    allowedTopics: flat,
+    maxCandidates,
+    maxDepth,
+  })
+
+  let rawResponse = ''
+  try {
+    const result = await generate({
+      baseUrl: settings.ollama_base_url,
+      model: settings.model_name,
+      prompt,
+      temperature: 0.1,
+      timeoutMs: 360_000,
+    })
+    rawResponse = result.response
+    const parsed = tryParseJson(rawResponse, false)
+    if (!parsed) return { candidates: [], prompt, rawResponse, error: 'JSON parse fehlgeschlagen' }
+
+    const validated = compactResponseSchema.safeParse(parsed)
+    if (!validated.success) {
+      return { candidates: [], prompt, rawResponse, error: `Schema: ${validated.error.errors[0].message}` }
+    }
+
+    const candidates = validated.data.candidates
+      .map(c => ({
+        topic_id: indexMap[c.n] ?? '',
+        confidence: c.confidence,
+        is_primary: c.is_primary,
+        reason: c.reason ?? null,
+      }))
+      .filter(c => !!c.topic_id)
+
+    return { candidates, prompt, rawResponse, error: null }
+  } catch (err) {
+    return {
+      candidates: [],
+      prompt,
+      rawResponse,
+      error: err instanceof OllamaError ? err.message : err instanceof Error ? err.message : String(err),
+    }
   }
 }
 
@@ -92,67 +166,51 @@ export async function classifyItem(
     .eq('id', itemId)
 
   const allowed = await getAllowedTopics(supabase)
-  const allowedFlat = allowed.map(t => ({
-    id: t.id,
-    full_path: t.full_path,
-    level: t.level,
-  }))
-
-  const { prompt, indexMap } = buildClassifierPrompt({
-    item: { title: item.title, description: item.description, content: item.content },
-    allowedTopics: allowedFlat,
-    maxCandidates: settings.max_candidates,
-    maxDepth: settings.max_depth,
-  })
+  const itemForPrompt = { title: item.title, description: item.description, content: item.content }
 
   const startTs = Date.now()
-  let rawResponse = ''
   let runStatus: 'success' | 'failed' | 'parse_error' = 'failed'
   let parsedJson: unknown = null
   let errorMessage: string | null = null
+  let combinedPrompt = ''
+  let combinedRaw = ''
 
-  try {
-    const result = await generate({
-      baseUrl: settings.ollama_base_url,
-      model: settings.model_name,
-      prompt,
-      format: 'json',
-      temperature: 0.2,
-      timeoutMs: 360_000, // 6 Minuten — CPU-Inferenz braucht länger
-    })
-    rawResponse = result.response
-    parsedJson = tryParseJson(result.response, true)
-    if (parsedJson === null) {
-      runStatus = 'parse_error'
-      errorMessage = 'Antwort konnte nicht als JSON geparst werden'
-    } else {
-      const validated = compactResponseSchema.safeParse(parsedJson)
-      if (!validated.success) {
-        runStatus = 'parse_error'
-        errorMessage = `Schema-Validierung fehlgeschlagen: ${validated.error.errors[0].message}`
-      } else {
-        // Nummern-Indices zurück auf UUIDs mappen
-        parsedJson = {
-          candidates: validated.data.candidates
-            .map(c => ({
-              topic_id: indexMap[c.n],
-              confidence: c.confidence,
-              is_primary: c.is_primary,
-              reason: c.reason ?? null,
-            }))
-            .filter(c => !!c.topic_id),
-        }
-        runStatus = 'success'
-      }
+  // --- Stufe 1: Root-Topic ermitteln ---
+  const rootTopics = allowed.filter(t => t.level === 1)
+  const stage1 = await runStage(settings, itemForPrompt, rootTopics, 1, 1)
+  combinedPrompt = `[Stufe 1]\n${stage1.prompt}`
+  combinedRaw = `[Stufe 1]\n${stage1.rawResponse}`
+
+  let stage2Topics = allowed // Fallback: alle Topics
+  if (stage1.error === null && stage1.candidates.length > 0) {
+    const rootId = stage1.candidates[0].topic_id
+    const root = allowed.find(t => t.id === rootId)
+    if (root) {
+      // Root selbst + alle Topics die unter diesem Root liegen
+      stage2Topics = allowed.filter(
+        t => t.id === rootId || t.path_array[0] === root.name
+      )
     }
-  } catch (err) {
-    runStatus = 'failed'
-    errorMessage =
-      err instanceof OllamaError
-        ? err.message
-        : err instanceof Error
-          ? err.message
-          : String(err)
+  }
+
+  // --- Stufe 2: Sub-Topics des Root-Topics ---
+  const stage2 = await runStage(settings, itemForPrompt, stage2Topics, settings.max_candidates, settings.max_depth)
+  combinedPrompt += `\n\n[Stufe 2]\n${stage2.prompt}`
+  combinedRaw += `\n\n[Stufe 2]\n${stage2.rawResponse}`
+
+  if (stage2.error !== null) {
+    runStatus = stage2.candidates.length === 0 ? 'parse_error' : 'parse_error'
+    errorMessage = `Stufe 2: ${stage2.error}`
+  } else if (stage2.candidates.length === 0 && stage1.candidates.length > 0) {
+    // Stufe 2 lieferte nichts — Root-Kandidat als Fallback
+    parsedJson = { candidates: stage1.candidates }
+    runStatus = 'success'
+  } else if (stage2.candidates.length > 0) {
+    parsedJson = { candidates: stage2.candidates }
+    runStatus = 'success'
+  } else {
+    errorMessage = stage1.error ?? 'Keine Kandidaten gefunden'
+    runStatus = 'parse_error'
   }
 
   const durationMs = Date.now() - startTs
@@ -165,8 +223,8 @@ export async function classifyItem(
       model: settings.model_name,
       status: runStatus,
       duration_ms: durationMs,
-      prompt,
-      raw_response: rawResponse || null,
+      prompt: combinedPrompt,
+      raw_response: combinedRaw || null,
       parsed_response: (parsedJson as Json) ?? null,
       error_message: errorMessage,
     })

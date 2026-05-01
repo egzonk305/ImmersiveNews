@@ -89,22 +89,42 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-medium text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">RSS · Klassifizierung · Review</p>
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">RSS · Klassifizierung · Review</p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/review" className="rounded-md bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 text-xs font-medium transition-colors">
+            Review-Queue öffnen
+          </Link>
+          <Link href="/settings/feeds" className="rounded-md border border-gray-200 hover:bg-white text-gray-700 px-3.5 py-2 text-xs font-medium transition-colors">
+            Feeds verwalten
+          </Link>
+        </div>
       </div>
 
-      {/* Kennzahlen */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Aktive Feeds', value: s?.active_feeds, href: '/settings/feeds', color: 'border-green-200 bg-green-50/50' },
-          { label: 'Pending Items', value: s?.pending_items, href: '/review?state=pending', color: 'border-amber-200 bg-amber-50/50' },
-          { label: 'Klassifiziert', value: s?.classified_items, href: '/review?state=classified', color: 'border-blue-200 bg-blue-50/50' },
-          { label: 'Fehlerhaft', value: s?.failed_items, href: '/review?state=failed', color: 'border-red-200 bg-red-50/50' },
+          { label: 'Aktive Feeds', value: s?.active_feeds, href: '/settings/feeds', icon: '⟳', accent: 'text-green-700 bg-green-50 border-green-200' },
+          { label: 'Pending', value: s?.pending_items, href: '/review?state=pending', icon: '⧖', accent: 'text-amber-700 bg-amber-50 border-amber-200' },
+          { label: 'Klassifiziert', value: s?.classified_items, href: '/review?state=classified', icon: '✓', accent: 'text-blue-700 bg-blue-50 border-blue-200' },
+          { label: 'Fehlerhaft', value: s?.failed_items, href: '/review?state=failed', icon: '⚠', accent: 'text-red-700 bg-red-50 border-red-200' },
         ].map(c => (
-          <Link key={c.label} href={c.href} className={`rounded-lg border p-4 hover:shadow-sm transition-all ${c.color}`}>
-            <p className="text-xs text-gray-500 mb-1">{c.label}</p>
-            <p className="text-2xl font-medium text-gray-800">{loading ? '…' : (c.value ?? '–')}</p>
+          <Link
+            key={c.label}
+            href={c.href}
+            className="group rounded-lg border border-gray-200 bg-white p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500 font-medium">{c.label}</p>
+              <span className={`inline-flex w-7 h-7 items-center justify-center rounded-md text-sm border ${c.accent}`}>
+                {c.icon}
+              </span>
+            </div>
+            <p className="text-2xl font-semibold text-gray-900 tabular-nums">
+              {loading ? <span className="inline-block w-10 h-7 rounded bg-gray-100 animate-pulse" /> : (c.value ?? '–')}
+            </p>
           </Link>
         ))}
       </div>
@@ -219,26 +239,31 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Schnellzugriff */}
       <div className="rounded-lg border border-gray-200 bg-white">
         <div className="border-b border-gray-100 px-4 py-3">
           <h2 className="text-sm font-medium text-gray-700">Schnellzugriff</h2>
         </div>
-        <div className="p-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-4 grid grid-cols-2 lg:grid-cols-3 gap-3">
           {[
-            { href: '/topics', label: 'Topics' },
-            { href: '/topics/new', label: '+ Neues Topic' },
-            { href: '/review', label: 'Review-Queue' },
-            { href: '/settings/feeds', label: 'Feeds' },
-            { href: '/settings/classifier', label: 'KI-Einstellungen' },
-            { href: '/classification-logs', label: 'KI-Logs' },
+            { href: '/topics', label: 'Topics', icon: '☰', desc: 'Themenbaum verwalten' },
+            { href: '/topics/new', label: 'Neues Topic', icon: '＋', desc: 'Unterthema anlegen' },
+            { href: '/review', label: 'Review-Queue', icon: '✓', desc: 'KI-Vorschläge prüfen' },
+            { href: '/settings/feeds', label: 'RSS-Feeds', icon: '⟳', desc: 'Feed-Quellen verwalten' },
+            { href: '/settings/classifier', label: 'KI-Einstellungen', icon: '🧠', desc: 'Modell konfigurieren' },
+            { href: '/classification-logs', label: 'KI-Logs', icon: '📋', desc: 'Klassifizierungsläufe' },
           ].map(item => (
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              className="group rounded-md border border-gray-200 px-3 py-3 text-sm hover:bg-gray-50 hover:border-gray-300 transition-colors flex items-start gap-3"
             >
-              {item.label}
+              <span className="w-8 h-8 shrink-0 rounded-md bg-gray-50 group-hover:bg-white border border-gray-200 flex items-center justify-center text-gray-600">
+                {item.icon}
+              </span>
+              <div className="min-w-0">
+                <p className="text-gray-800 font-medium">{item.label}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+              </div>
             </Link>
           ))}
         </div>

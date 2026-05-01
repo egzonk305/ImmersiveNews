@@ -18,22 +18,18 @@ export interface PromptResult {
   indexMap: Record<number, string> // index → topic_id
 }
 
-// Baut einen kompakten Prompt — Topics als nummerierte Kurzliste statt UUIDs+Pfade.
-// Reduziert Token-Anzahl von ~16k auf ~2-3k.
 export function buildClassifierPrompt(opts: BuildPromptOptions): PromptResult {
   const filtered = opts.allowedTopics.filter(t => t.level <= opts.maxDepth)
 
   const indexMap: Record<number, string> = {}
   const topicsList = filtered.map((t, i) => {
     indexMap[i + 1] = t.id
-    // Nur letzten Teil des Pfades anzeigen spart Token
-    const parts = t.full_path.split(' > ')
-    const label = parts.length > 2 ? parts.slice(-2).join(' > ') : t.full_path
-    return `${i + 1}:${label}`
+    return `${i + 1}:${t.full_path}`
   }).join('\n')
 
-  const description = (opts.item.description ?? '').slice(0, 400)
+  const description = (opts.item.description ?? '').slice(0, 300)
 
+  // Prompt endet mit JSON-Prefix — LLM vervollständigt, tryParseJson setzt es wieder vorne an
   const prompt = `Klassifiziere den Artikel. Wähle maximal ${opts.maxCandidates} Themen-Nummern aus der Liste. Genau einer hat is_primary:true.
 
 THEMEN:
@@ -43,7 +39,8 @@ ARTIKEL:
 Titel: ${opts.item.title}
 Beschreibung: ${description || '(keine)'}
 
-{"candidates":[`
+Antworte NUR mit diesem JSON-Objekt, keine Erklärung, kein Markdown:
+{"candidates":[{"n":NUMMER,"confidence":0.0-1.0,"is_primary":true/false}]}`
 
   return { prompt, indexMap }
 }

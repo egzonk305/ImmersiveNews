@@ -41,7 +41,11 @@ export async function POST(request: NextRequest) {
     }
 
     const models = await listModels(baseUrl)
-    const has = models.some(m => m.name === modelName || m.name.startsWith(`${modelName}:`))
+    const target = modelName.toLowerCase().trim()
+    const has = models.some(m => {
+      const mn = m.name.toLowerCase().trim()
+      return mn === target || mn.startsWith(`${target}:`) || target.startsWith(`${mn}:`)
+    })
 
     return NextResponse.json({
       data: {

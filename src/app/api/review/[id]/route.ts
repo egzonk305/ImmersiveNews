@@ -86,33 +86,49 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     if (error) throw new Error(error.message)
 
-    // Bei Freigabe mit explizitem target_topic_id: bestehende manuelle
-    // Zuordnung idempotent setzen (KEIN neues Topic erzeugen).
-    if (
-      parsed.data.status === 'approved' &&
-      parsed.data.target_topic_id &&
-      data
-    ) {
-      // bestehende primary-Zuordnung deaktivieren
-      await supabase
-        .from('incoming_item_topics')
-        .update({ is_primary: false })
-        .eq('incoming_item_id', id)
-        .eq('is_primary', true)
+    if (parsed.data.status === 'approved' && data) {
+      if (parsed.data.target_topic_id) {
+        // Manuelle Zuordnung: bestehende primary deaktivieren, neue setzen
+        await supabase
+          .from('incoming_item_topics')
+          .update({ is_primary: false })
+          .eq('incoming_item_id', id)
+          .eq('is_primary', true)
 
-      // upsert manuelle Zuordnung
-      await supabase.from('incoming_item_topics').upsert(
-        {
-          incoming_item_id: id,
-          topic_id: parsed.data.target_topic_id,
-          rank: 1,
-          is_primary: true,
-          source: 'manual',
-          status: 'confirmed',
-          reason: 'Manuell beim Review zugeordnet',
-        },
-        { onConflict: 'incoming_item_id,topic_id' }
-      )
+        await supabase.from('incoming_item_topics').upsert(
+          {
+            incoming_item_id: id,
+            topic_id: parsed.data.target_topic_id,
+            rank: 1,
+            is_primary: true,
+            source: 'manual',
+            status: 'confirmed',
+            reason: 'Manuell beim Review zugeordnet',
+          },
+          { onConflict: 'incoming_item_id,topic_id' }
+        )
+      } else {
+        // Implizite Bestätigung: bestehenden primary-Kandidat confirmen
+        const { data: primary } = await supabase
+          .from('incoming_item_topics')
+          .select('topic_id')
+          .eq('incoming_item_id', id)
+          .eq('is_primary', true)
+          .maybeSingle()
+
+        if (primary?.topic_id) {
+          await supabase
+            .from('incoming_item_topics')
+            .update({ status: 'confirmed' })
+            .eq('incoming_item_id', id)
+            .eq('topic_id', primary.topic_id)
+
+          await supabase
+            .from('incoming_items')
+            .update({ target_topic_id: primary.topic_id })
+            .eq('id', id)
+        }
+      }
     }
 
     return NextResponse.json({ data })

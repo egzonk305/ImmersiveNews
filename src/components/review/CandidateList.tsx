@@ -11,7 +11,7 @@ export interface CandidateRow {
   reason: string | null
   source: 'llm' | 'manual'
   status: 'suggested' | 'confirmed' | 'rejected'
-  topics?: { id: string; name: string; level: number } | null
+  topics?: { id: string; name: string; level: number; full_path?: string | null } | null
 }
 
 interface Props {
@@ -94,13 +94,27 @@ export function CandidateList({ itemId, onChanged }: Props) {
     }
   }
 
-  if (loading) return <p className="text-xs text-gray-400 py-2">Lade Kandidaten…</p>
+  if (loading) {
+    return (
+      <div className="space-y-2 py-1">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="rounded border border-gray-200 p-3">
+            <div className="h-3 w-1/2 rounded bg-gray-100 animate-pulse" />
+            <div className="mt-2 h-2 w-1/3 rounded bg-gray-100 animate-pulse" />
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   if (candidates.length === 0) {
     return (
-      <p className="text-xs text-gray-400 py-2">
-        Keine KI-Kandidaten. Klassifizierung starten oder manuell zuordnen.
-      </p>
+      <div className="rounded border border-dashed border-gray-200 bg-gray-50/50 px-4 py-6 text-center">
+        <p className="text-xs text-gray-500 mb-1">Keine KI-Kandidaten vorhanden</p>
+        <p className="text-[11px] text-gray-400">
+          Klassifizierung starten oder manuell zuordnen.
+        </p>
+      </div>
     )
   }
 
@@ -122,7 +136,7 @@ export function CandidateList({ itemId, onChanged }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-gray-800">
-                    {c.topics?.name ?? '(unbekanntes Topic)'}
+                    {c.topics?.full_path ?? c.topics?.name ?? '(unbekanntes Topic)'}
                   </span>
                   {c.is_primary && (
                     <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] text-white">
@@ -135,12 +149,24 @@ export function CandidateList({ itemId, onChanged }: Props) {
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${statusColors[c.status]}`}>
                     {c.status === 'suggested' ? 'Vorschlag' : c.status === 'confirmed' ? 'bestätigt' : 'abgelehnt'}
                   </span>
-                  {c.confidence !== null && (
-                    <span className="text-[10px] text-gray-500">
-                      Konfidenz: {(c.confidence * 100).toFixed(0)}%
-                    </span>
-                  )}
                 </div>
+                {c.confidence !== null && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 max-w-[140px] h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${
+                          c.confidence >= 0.8 ? 'bg-green-500' :
+                          c.confidence >= 0.5 ? 'bg-amber-500' :
+                          'bg-red-400'
+                        }`}
+                        style={{ width: `${c.confidence * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-500 tabular-nums">
+                      {(c.confidence * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                )}
                 {c.reason && (
                   <p className="mt-1 text-xs text-gray-600 italic">{c.reason}</p>
                 )}

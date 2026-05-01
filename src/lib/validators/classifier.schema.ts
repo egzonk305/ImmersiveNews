@@ -26,9 +26,9 @@ export type ClassifierCandidate = z.infer<typeof classifierCandidateSchema>
 
 // Kompaktes Format: LLM gibt Nummern-Index zurück statt UUIDs
 export const compactCandidateSchema = z.object({
-  n: z.number().int().min(1),
-  confidence: z.number().min(0).max(1),
-  is_primary: z.boolean(),
+  n: z.union([z.number(), z.string()]).transform(v => Number(v)).pipe(z.number().int().min(1)),
+  confidence: z.union([z.number(), z.string()]).transform(v => Number(v)).pipe(z.number().min(0).max(1)),
+  is_primary: z.union([z.boolean(), z.string()]).transform(v => v === true || v === 'true'),
   reason: z.string().max(2000).optional().nullable(),
 })
 export const compactResponseSchema = z.object({
