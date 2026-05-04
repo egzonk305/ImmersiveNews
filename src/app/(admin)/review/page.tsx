@@ -431,6 +431,31 @@ export default function ReviewPage() {
 
                       {expandedId === item.id && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
+                          {/* Enrichment Status */}
+                          {item.source_url && (
+                            <div className="mb-3 text-xs text-muted-foreground flex items-center gap-2">
+                              {item.enrichment_status === 'success' && (
+                                <span className="text-green-600">Volltext geladen ({item.enriched_content?.length ?? 0} Zeichen)</span>
+                              )}
+                              {item.enrichment_status === 'failed' && (
+                                <span className="text-red-500">Enrichment fehlgeschlagen: {item.enrichment_error}</span>
+                              )}
+                              {item.enrichment_status === 'pending' && (
+                                <span className="text-yellow-600">Enrichment läuft…</span>
+                              )}
+                              {(!item.enrichment_status || item.enrichment_status === 'none') && (
+                                <button
+                                  onClick={async () => {
+                                    await fetch(`/api/enrich/${item.id}`, { method: 'POST' })
+                                    loadItems()
+                                  }}
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  Volltext laden
+                                </button>
+                              )}
+                            </div>
+                          )}
                           <CandidateList itemId={item.id} onChanged={loadItems} />
                           <div className="mt-3 flex gap-2 flex-wrap">
                             <button

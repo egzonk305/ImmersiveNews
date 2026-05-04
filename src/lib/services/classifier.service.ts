@@ -7,6 +7,7 @@ import type {
   TopicWithPath,
 } from '@/lib/types/database.types'
 import { generate, OllamaError } from '@/lib/services/ollama.client'
+import { enrichItem } from '@/lib/services/enrichment.service'
 import { buildClassifierPrompt } from '@/lib/prompts/classifier-prompt'
 import {
   compactResponseSchema,
@@ -168,7 +169,27 @@ export async function classifyItem(
     .eq('id', itemId)
 
   const allowed = await getAllowedTopics(supabase)
-  const itemForPrompt = { title: item.title, description: item.description, content: item.content }
+
+  // Enrichment: Volltext holen wenn global aktiviert und Item hat URL
+  let enrichedContent: string | null = item.enriched_content ?? null
+  if (
+    settings.enrichment_enabled_global &&
+    item.source_url &&
+    item.enrichment_status !== 'success' &&
+    (item.description?.length ?? 0) < settings.enrichment_min_description_chars
+  ) {
+    try {
+      enrichedContent = await enrichItem(supabase, itemId, item.source_url, settings)
+    } catch {
+      // Klassifizierung trotzdem fortsetzen
+    }
+  }
+
+  const itemForPrompt = {
+    title: item.title,
+    description: item.description,
+    content: enrichedContent ?? item.content,
+  }
 
   const startTs = Date.now()
   let runStatus: 'success' | 'failed' | 'parse_error' = 'failed'
