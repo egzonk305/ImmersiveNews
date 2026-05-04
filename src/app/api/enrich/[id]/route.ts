@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'
+
 import { createClient } from '@/lib/supabase/server'
 import { getSettings } from '@/lib/services/classifier.service'
 import { enrichItem } from '@/lib/services/enrichment.service'

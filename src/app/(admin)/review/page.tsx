@@ -440,10 +440,7 @@ export default function ReviewPage() {
                               {item.enrichment_status === 'failed' && (
                                 <span className="text-red-500">Enrichment fehlgeschlagen: {item.enrichment_error}</span>
                               )}
-                              {item.enrichment_status === 'pending' && (
-                                <span className="text-yellow-600">Enrichment läuft…</span>
-                              )}
-                              {(!item.enrichment_status || item.enrichment_status === 'none') && (
+                              {(!item.enrichment_status || item.enrichment_status === 'none' || item.enrichment_status === 'pending' || item.enrichment_status === 'failed') && (
                                 <button
                                   onClick={async () => {
                                     await fetch(`/api/enrich/${item.id}`, { method: 'POST' })
@@ -451,7 +448,7 @@ export default function ReviewPage() {
                                   }}
                                   className="text-blue-600 hover:underline"
                                 >
-                                  Volltext laden
+                                  {item.enrichment_status === 'pending' ? 'Volltext neu laden…' : item.enrichment_status === 'failed' ? 'Volltext erneut versuchen' : 'Volltext laden'}
                                 </button>
                               )}
                             </div>
