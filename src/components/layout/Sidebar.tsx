@@ -44,6 +44,7 @@ const navGroups: NavGroup[] = [
     label: 'System',
     items: [
       { href: '/settings/feeds', label: 'RSS-Feeds', icon: '⟳' },
+      { href: '/lifecycle', label: 'Lifecycle', icon: '♻' },
       { href: '/schema', label: 'Schema', icon: '◈' },
     ],
   },
