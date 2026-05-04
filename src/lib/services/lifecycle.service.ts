@@ -16,6 +16,7 @@ export async function runLifecycle(
 ): Promise<LifecycleResult> {
   const settings = await getSettings(supabase)
   const now = new Date()
+  const startedAt = now.toISOString()
 
   const freshThreshold = new Date(
     now.getTime() - settings.fresh_ttl_hours * 3_600_000
@@ -42,13 +43,17 @@ export async function runLifecycle(
       archiveQuery = archiveQuery.neq('status', 'approved')
     }
 
+    if (settings.keep_with_topic_associations) {
+      archiveQuery = archiveQuery.is('target_topic_id', null)
+    }
+
     const { data: toArchive, error: archiveSelectError } = await archiveQuery
     if (archiveSelectError) throw new Error(archiveSelectError.message)
 
     archivedCount = toArchive?.length ?? 0
 
     if (!dryRun && archivedCount > 0) {
-      const ids = toArchive!.map(i => i.id)
+      const ids = (toArchive ?? []).map(i => i.id)
       const { error: archiveUpdateError } = await supabase
         .from('incoming_items')
         .update({
@@ -102,6 +107,7 @@ export async function runLifecycle(
 
   // Log the run
   const runInsert: LifecycleRunInsert = {
+    started_at: startedAt,
     dry_run: dryRun,
     finished_at: new Date().toISOString(),
     archived_count: archivedCount,
@@ -112,11 +118,15 @@ export async function runLifecycle(
     error: runError,
   }
 
-  const { data: runData } = await supabase
+  const { data: runData, error: runInsertError } = await supabase
     .from('lifecycle_runs')
     .insert(runInsert)
     .select('id')
     .single()
+
+  if (runInsertError) {
+    console.error('lifecycle_runs insert failed:', runInsertError.message)
+  }
 
   return {
     run_id: runData?.id ?? '',
