@@ -106,11 +106,13 @@ CREATE INDEX IF NOT EXISTS iit_status_suggested_idx
   ON incoming_item_topics(status)
   WHERE status = 'suggested';
 
--- Views droppen die von confidence abhängen (werden am Ende neu erstellt)
-DROP VIEW IF EXISTS low_confidence_items CASCADE;
-DROP VIEW IF EXISTS dashboard_stats CASCADE;
-DROP VIEW IF EXISTS items_per_root CASCADE;
+-- Alle abhängigen Views droppen (werden am Ende neu erstellt)
 DROP VIEW IF EXISTS recent_classifications CASCADE;
+DROP VIEW IF EXISTS low_confidence_items CASCADE;
+DROP VIEW IF EXISTS items_per_root CASCADE;
+DROP VIEW IF EXISTS dashboard_stats CASCADE;
+DROP VIEW IF EXISTS pending_topic_suggestions CASCADE;
+DROP VIEW IF EXISTS topics_with_path CASCADE;
 
 -- Confidence-Präzision erhöhen: numeric(4,3) → numeric(5,4)
 ALTER TABLE incoming_item_topics
