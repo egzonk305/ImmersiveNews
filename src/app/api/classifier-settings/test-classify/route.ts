@@ -17,8 +17,8 @@ const sampleSchema = z.object({
 })
 
 // POST /api/classifier-settings/test-classify
-// Führt eine Test-Klassifikation gegen das aktuell konfigurierte Modell aus.
-// Schreibt NICHTS in die Datenbank — nur Diagnose.
+// Diagnostik-Endpunkt: nutzt format:'json' (Ollama structured mode) statt tryParseJson.
+// Schreibt NICHTS in die Datenbank — nur für Verbindungs- und Modelltests.
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()

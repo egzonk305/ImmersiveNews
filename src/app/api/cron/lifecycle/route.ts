@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'
+
 import { createClient } from '@/lib/supabase/server'
 import { runLifecycle } from '@/lib/services/lifecycle.service'
 import { NextResponse } from 'next/server'

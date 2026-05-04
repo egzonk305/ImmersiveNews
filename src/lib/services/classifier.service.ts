@@ -51,12 +51,11 @@ export async function getAllowedTopics(
   return data ?? []
 }
 
-function tryParseJson(text: string, primed = false): unknown | null {
-  const stripped = text
+function tryParseJson(text: string): unknown | null {
+  const full = text
     .replace(/<think>[\s\S]*?<\/think>/g, '')
     .replace(/<think>[\s\S]*/g, '')
     .trim()
-  const full = primed ? `{"candidates":[${stripped}` : stripped
 
   try {
     return JSON.parse(full)
@@ -120,7 +119,7 @@ async function runStage(
       timeoutMs: settings.timeout_ms,
     })
     rawResponse = result.response
-    const parsed = tryParseJson(rawResponse, false)
+    const parsed = tryParseJson(rawResponse)
     if (!parsed) return { candidates: [], prompt, rawResponse, error: 'JSON parse fehlgeschlagen' }
 
     const validated = compactResponseSchema.safeParse(parsed)

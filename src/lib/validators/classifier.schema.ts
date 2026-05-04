@@ -22,10 +22,6 @@ export const classifierCandidateSchema = z.object({
   reason: z.string().max(2000).optional().nullable(),
 })
 
-export const classifierResponseSchema = z.object({
-  candidates: z.array(classifierCandidateSchema).min(1).max(10),
-})
-export type ClassifierResponse = z.infer<typeof classifierResponseSchema>
 export type ClassifierCandidate = z.infer<typeof classifierCandidateSchema>
 
 // Kompaktes Format: LLM gibt Nummern-Index zurück statt UUIDs

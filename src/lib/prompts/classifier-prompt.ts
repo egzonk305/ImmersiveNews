@@ -36,7 +36,6 @@ export function buildClassifierPrompt(opts: BuildPromptOptions): PromptResult {
     content ? `Volltext (Auszug): ${content}` : null,
   ].filter(Boolean).join('\n')
 
-  // Prompt endet mit JSON-Prefix — LLM vervollständigt, tryParseJson setzt es wieder vorne an
   const prompt = `Klassifiziere den Artikel. Wähle maximal ${opts.maxCandidates} Themen-Nummern aus der Liste. Genau einer hat is_primary:true.
 
 THEMEN:
