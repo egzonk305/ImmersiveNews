@@ -278,59 +278,10 @@ CREATE INDEX IF NOT EXISTS enrichment_cache_fetched_idx
 
 
 -- =============================================================================
--- 015: Views aktualisieren
+-- 015: Views aktualisieren — Reihenfolge: topics_with_path zuerst
 -- =============================================================================
 
-CREATE OR REPLACE VIEW dashboard_stats AS
-SELECT
-  (SELECT count(*) FROM rss_feeds WHERE is_active) AS active_feeds,
-  (SELECT count(*) FROM incoming_items WHERE processing_state = 'pending') AS pending_items,
-  (SELECT count(*) FROM incoming_items WHERE processing_state = 'processing') AS processing_items,
-  (SELECT count(*) FROM incoming_items WHERE processing_state = 'classified') AS classified_items,
-  (SELECT count(*) FROM incoming_items WHERE processing_state = 'failed') AS failed_items,
-  (SELECT count(*) FROM incoming_items WHERE processing_state = 'done') AS done_items,
-  (SELECT count(*) FROM incoming_items WHERE status = 'pending') AS review_pending,
-  (SELECT count(*) FROM incoming_items WHERE created_at > now() - interval '24 hours') AS items_last_24h,
-  (SELECT round(avg(confidence)::numeric, 4) FROM incoming_item_topics
-     WHERE source = 'llm' AND is_primary = true) AS avg_primary_confidence,
-  (SELECT count(*) FROM incoming_items WHERE lifecycle_state = 'fresh') AS fresh_items,
-  (SELECT count(*) FROM incoming_items WHERE lifecycle_state = 'archived') AS archived_items,
-  (SELECT count(*) FROM topics WHERE topic_status = 'suggested') AS suggested_topics_count;
-
-CREATE OR REPLACE FUNCTION get_allowed_topics()
-RETURNS TABLE(
-  id uuid,
-  name text,
-  level int,
-  full_path text,
-  path_array text[]
-)
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT twp.id, twp.name, twp.level, twp.full_path, twp.path_array
-  FROM topics_with_path twp
-  JOIN topics t ON t.id = twp.id
-  WHERE t.topic_status = 'active'
-  ORDER BY twp.full_path;
-$$;
-
-CREATE OR REPLACE VIEW pending_topic_suggestions AS
-SELECT
-  t.id,
-  t.name,
-  t.parent_id,
-  t.level,
-  t.proposed_from_item_id,
-  ii.title AS proposed_from_item_title,
-  parent_twp.full_path AS parent_full_path,
-  t.created_at
-FROM topics t
-LEFT JOIN incoming_items ii ON ii.id = t.proposed_from_item_id
-LEFT JOIN topics_with_path parent_twp ON parent_twp.id = t.parent_id
-WHERE t.topic_status = 'suggested'
-ORDER BY t.created_at DESC;
-
+-- 1. topics_with_path (Basis für alle anderen Views/Funktionen)
 CREATE OR REPLACE VIEW topics_with_path AS
 WITH RECURSIVE walk AS (
   SELECT
@@ -365,8 +316,60 @@ WITH RECURSIVE walk AS (
 )
 SELECT * FROM walk;
 
--- ─── Views die gedroppt wurden wiederherstellen ───────────────────────────
+-- 2. get_allowed_topics (nutzt topics_with_path)
+CREATE OR REPLACE FUNCTION get_allowed_topics()
+RETURNS TABLE(
+  id uuid,
+  name text,
+  level int,
+  full_path text,
+  path_array text[]
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT twp.id, twp.name, twp.level, twp.full_path, twp.path_array
+  FROM topics_with_path twp
+  JOIN topics t ON t.id = twp.id
+  WHERE t.topic_status = 'active'
+  ORDER BY twp.full_path;
+$$;
 
+-- 3. pending_topic_suggestions (nutzt topics_with_path)
+CREATE OR REPLACE VIEW pending_topic_suggestions AS
+SELECT
+  t.id,
+  t.name,
+  t.parent_id,
+  t.level,
+  t.proposed_from_item_id,
+  ii.title AS proposed_from_item_title,
+  parent_twp.full_path AS parent_full_path,
+  t.created_at
+FROM topics t
+LEFT JOIN incoming_items ii ON ii.id = t.proposed_from_item_id
+LEFT JOIN topics_with_path parent_twp ON parent_twp.id = t.parent_id
+WHERE t.topic_status = 'suggested'
+ORDER BY t.created_at DESC;
+
+-- 4. dashboard_stats
+CREATE OR REPLACE VIEW dashboard_stats AS
+SELECT
+  (SELECT count(*) FROM rss_feeds WHERE is_active) AS active_feeds,
+  (SELECT count(*) FROM incoming_items WHERE processing_state = 'pending') AS pending_items,
+  (SELECT count(*) FROM incoming_items WHERE processing_state = 'processing') AS processing_items,
+  (SELECT count(*) FROM incoming_items WHERE processing_state = 'classified') AS classified_items,
+  (SELECT count(*) FROM incoming_items WHERE processing_state = 'failed') AS failed_items,
+  (SELECT count(*) FROM incoming_items WHERE processing_state = 'done') AS done_items,
+  (SELECT count(*) FROM incoming_items WHERE status = 'pending') AS review_pending,
+  (SELECT count(*) FROM incoming_items WHERE created_at > now() - interval '24 hours') AS items_last_24h,
+  (SELECT round(avg(confidence)::numeric, 4) FROM incoming_item_topics
+     WHERE source = 'llm' AND is_primary = true) AS avg_primary_confidence,
+  (SELECT count(*) FROM incoming_items WHERE lifecycle_state = 'fresh') AS fresh_items,
+  (SELECT count(*) FROM incoming_items WHERE lifecycle_state = 'archived') AS archived_items,
+  (SELECT count(*) FROM topics WHERE topic_status = 'suggested') AS suggested_topics_count;
+
+-- 5. Weitere Views wiederherstellen
 CREATE OR REPLACE VIEW items_per_root AS
 SELECT
   r.id AS root_id,
