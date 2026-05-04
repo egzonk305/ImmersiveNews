@@ -201,7 +201,7 @@ export async function classifyItem(
   combinedRaw += `\n\n[Stufe 2]\n${stage2.rawResponse}`
 
   if (stage2.error !== null) {
-    runStatus = stage2.candidates.length === 0 ? 'parse_error' : 'parse_error'
+    runStatus = 'parse_error'
     errorMessage = `Stufe 2: ${stage2.error}`
   } else if (stage2.candidates.length === 0 && stage1.candidates.length > 0) {
     // Stufe 2 lieferte nichts — Root-Kandidat als Fallback
