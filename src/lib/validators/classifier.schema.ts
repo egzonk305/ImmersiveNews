@@ -7,6 +7,10 @@ export const classifierSettingsUpdateSchema = z.object({
   max_depth: z.number().int().min(1).max(5).optional(),
   confidence_threshold: z.number().min(0).max(1).optional(),
   auto_accept_enabled: z.boolean().optional(),
+  temperature: z.number().min(0).max(1).optional(),
+  num_ctx: z.number().int().min(512).max(131072).optional(),
+  num_predict: z.number().int().min(1).max(32768).optional(),
+  timeout_ms: z.number().int().min(1000).max(3_600_000).optional(),
 })
 export type ClassifierSettingsUpdateInput = z.infer<typeof classifierSettingsUpdateSchema>
 

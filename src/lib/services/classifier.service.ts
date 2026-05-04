@@ -113,8 +113,10 @@ async function runStage(
       baseUrl: settings.ollama_base_url,
       model: settings.model_name,
       prompt,
-      temperature: 0.1,
-      timeoutMs: 360_000,
+      temperature: settings.temperature,
+      numCtx: settings.num_ctx,
+      numPredict: settings.num_predict,
+      timeoutMs: settings.timeout_ms,
     })
     rawResponse = result.response
     const parsed = tryParseJson(rawResponse, false)
