@@ -106,6 +106,12 @@ CREATE INDEX IF NOT EXISTS iit_status_suggested_idx
   ON incoming_item_topics(status)
   WHERE status = 'suggested';
 
+-- Views droppen die von confidence abhängen (werden am Ende neu erstellt)
+DROP VIEW IF EXISTS low_confidence_items CASCADE;
+DROP VIEW IF EXISTS dashboard_stats CASCADE;
+DROP VIEW IF EXISTS items_per_root CASCADE;
+DROP VIEW IF EXISTS recent_classifications CASCADE;
+
 -- Confidence-Präzision erhöhen: numeric(4,3) → numeric(5,4)
 ALTER TABLE incoming_item_topics
   ALTER COLUMN confidence TYPE numeric(5,4);
@@ -356,3 +362,50 @@ WITH RECURSIVE walk AS (
   INNER JOIN walk ON t.parent_id = walk.id
 )
 SELECT * FROM walk;
+
+-- ─── Views die gedroppt wurden wiederherstellen ───────────────────────────
+
+CREATE OR REPLACE VIEW items_per_root AS
+SELECT
+  r.id AS root_id,
+  r.name AS root_name,
+  count(DISTINCT iit.incoming_item_id) AS item_count
+FROM topics r
+LEFT JOIN incoming_item_topics iit ON
+  iit.is_primary = true
+  AND topic_root_id(iit.topic_id) = r.id
+WHERE r.is_fixed_root = true
+GROUP BY r.id, r.name
+ORDER BY r.name;
+
+CREATE OR REPLACE VIEW low_confidence_items AS
+SELECT
+  ii.id AS item_id,
+  ii.title,
+  ii.created_at,
+  iit.topic_id,
+  iit.confidence,
+  iit.reason,
+  cs.confidence_threshold
+FROM incoming_items ii
+JOIN incoming_item_topics iit ON iit.incoming_item_id = ii.id AND iit.is_primary = true
+CROSS JOIN LATERAL (SELECT confidence_threshold FROM classifier_settings LIMIT 1) cs
+WHERE iit.source = 'llm'
+  AND iit.confidence IS NOT NULL
+  AND iit.confidence < cs.confidence_threshold
+  AND ii.processing_state IN ('classified','done')
+ORDER BY iit.confidence ASC;
+
+CREATE OR REPLACE VIEW recent_classifications AS
+SELECT
+  cr.id,
+  cr.incoming_item_id,
+  ii.title AS item_title,
+  cr.model,
+  cr.status,
+  cr.duration_ms,
+  cr.error_message,
+  cr.created_at
+FROM classification_runs cr
+LEFT JOIN incoming_items ii ON ii.id = cr.incoming_item_id
+ORDER BY cr.created_at DESC;
