@@ -1,4 +1,5 @@
-// Aktualisierte Datenbank-Typen mit RSS-Feeds, Incoming Items, KI-Klassifizierung
+// Aktualisierte Datenbank-Typen mit RSS-Feeds, Incoming Items, KI-Klassifizierung,
+// Topic-Vorschlägen und Lifecycle.
 // Idealerweise automatisch generiert via: npm run db:types
 
 export type Json =
@@ -13,6 +14,11 @@ export type ProcessingState = 'pending' | 'processing' | 'classified' | 'failed'
 export type CandidateSource = 'llm' | 'manual'
 export type CandidateStatus = 'suggested' | 'confirmed' | 'rejected'
 export type ClassificationRunStatus = 'pending' | 'success' | 'failed' | 'parse_error'
+export type TopicStatus = 'active' | 'suggested' | 'rejected'
+export type LifecycleState = 'fresh' | 'archived' | 'deleted'
+export type EnrichmentStatus = 'none' | 'pending' | 'success' | 'failed' | 'skipped'
+export type EnrichmentCacheStatus = 'success' | 'failed'
+export type FeedInterval = 'hourly' | '15min' | '6hours' | 'daily'
 
 export interface Database {
   public: {
@@ -25,6 +31,10 @@ export interface Database {
           level: number
           description: string | null
           is_fixed_root: boolean
+          topic_status: TopicStatus
+          proposed_by_llm: boolean
+          proposed_from_item_id: string | null
+          merged_into_topic_id: string | null
           created_at: string
           updated_at: string
         }
@@ -35,6 +45,10 @@ export interface Database {
           level?: number
           description?: string | null
           is_fixed_root?: boolean
+          topic_status?: TopicStatus
+          proposed_by_llm?: boolean
+          proposed_from_item_id?: string | null
+          merged_into_topic_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -45,6 +59,10 @@ export interface Database {
           level?: number
           description?: string | null
           is_fixed_root?: boolean
+          topic_status?: TopicStatus
+          proposed_by_llm?: boolean
+          proposed_from_item_id?: string | null
+          merged_into_topic_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -63,12 +81,14 @@ export interface Database {
           name: string
           url: string
           is_active: boolean
-          interval: 'hourly' | '15min' | '6hours' | 'daily'
+          interval: FeedInterval
           root_topic_id: string | null
           start_topic_id: string | null
           last_fetched_at: string | null
           last_error: string | null
           item_count: number
+          enrichment_enabled: boolean | null
+          fresh_ttl_hours_override: number | null
           created_at: string
           updated_at: string
         }
@@ -77,12 +97,14 @@ export interface Database {
           name: string
           url: string
           is_active?: boolean
-          interval?: 'hourly' | '15min' | '6hours' | 'daily'
+          interval?: FeedInterval
           root_topic_id?: string | null
           start_topic_id?: string | null
           last_fetched_at?: string | null
           last_error?: string | null
           item_count?: number
+          enrichment_enabled?: boolean | null
+          fresh_ttl_hours_override?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -91,12 +113,14 @@ export interface Database {
           name?: string
           url?: string
           is_active?: boolean
-          interval?: 'hourly' | '15min' | '6hours' | 'daily'
+          interval?: FeedInterval
           root_topic_id?: string | null
           start_topic_id?: string | null
           last_fetched_at?: string | null
           last_error?: string | null
           item_count?: number
+          enrichment_enabled?: boolean | null
+          fresh_ttl_hours_override?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -119,6 +143,14 @@ export interface Database {
           processing_error: string | null
           target_topic_id: string | null
           reviewed_at: string | null
+          lifecycle_state: LifecycleState
+          archived_at: string | null
+          enriched_content: string | null
+          enrichment_status: EnrichmentStatus
+          enrichment_error: string | null
+          enriched_at: string | null
+          last_updated_from_source_at: string | null
+          content_hash: string | null
           created_at: string
           updated_at: string
         }
@@ -138,6 +170,14 @@ export interface Database {
           processing_error?: string | null
           target_topic_id?: string | null
           reviewed_at?: string | null
+          lifecycle_state?: LifecycleState
+          archived_at?: string | null
+          enriched_content?: string | null
+          enrichment_status?: EnrichmentStatus
+          enrichment_error?: string | null
+          enriched_at?: string | null
+          last_updated_from_source_at?: string | null
+          content_hash?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -157,6 +197,14 @@ export interface Database {
           processing_error?: string | null
           target_topic_id?: string | null
           reviewed_at?: string | null
+          lifecycle_state?: LifecycleState
+          archived_at?: string | null
+          enriched_content?: string | null
+          enrichment_status?: EnrichmentStatus
+          enrichment_error?: string | null
+          enriched_at?: string | null
+          last_updated_from_source_at?: string | null
+          content_hash?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -209,6 +257,7 @@ export interface Database {
           status: ClassificationRunStatus
           duration_ms: number | null
           prompt: string | null
+          prompt_hash: string | null
           raw_response: string | null
           parsed_response: Json | null
           error_message: string | null
@@ -221,6 +270,7 @@ export interface Database {
           status: ClassificationRunStatus
           duration_ms?: number | null
           prompt?: string | null
+          prompt_hash?: string | null
           raw_response?: string | null
           parsed_response?: Json | null
           error_message?: string | null
@@ -233,9 +283,32 @@ export interface Database {
           status?: ClassificationRunStatus
           duration_ms?: number | null
           prompt?: string | null
+          prompt_hash?: string | null
           raw_response?: string | null
           parsed_response?: Json | null
           error_message?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      classifier_prompts: {
+        Row: {
+          id: string
+          hash: string
+          content: string
+          byte_length: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          hash: string
+          content: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          hash?: string
+          content?: string
           created_at?: string
         }
         Relationships: []
@@ -249,6 +322,24 @@ export interface Database {
           max_depth: number
           confidence_threshold: number
           auto_accept_enabled: boolean
+          temperature: number
+          num_ctx: number
+          num_predict: number
+          timeout_ms: number
+          min_stage_confidence: number
+          topic_similarity_threshold: number
+          max_new_topics_per_item: number
+          auto_accept_new_topics: boolean
+          enrichment_enabled_global: boolean
+          enrichment_min_description_chars: number
+          enrichment_fetch_timeout_ms: number
+          enrichment_max_chars: number
+          prompt_template: string | null
+          reclassify_on_update: boolean
+          fresh_ttl_hours: number
+          archive_retention_days: number
+          keep_approved_forever: boolean
+          keep_with_topic_associations: boolean
           updated_at: string
         }
         Insert: {
@@ -259,6 +350,24 @@ export interface Database {
           max_depth?: number
           confidence_threshold?: number
           auto_accept_enabled?: boolean
+          temperature?: number
+          num_ctx?: number
+          num_predict?: number
+          timeout_ms?: number
+          min_stage_confidence?: number
+          topic_similarity_threshold?: number
+          max_new_topics_per_item?: number
+          auto_accept_new_topics?: boolean
+          enrichment_enabled_global?: boolean
+          enrichment_min_description_chars?: number
+          enrichment_fetch_timeout_ms?: number
+          enrichment_max_chars?: number
+          prompt_template?: string | null
+          reclassify_on_update?: boolean
+          fresh_ttl_hours?: number
+          archive_retention_days?: number
+          keep_approved_forever?: boolean
+          keep_with_topic_associations?: boolean
           updated_at?: string
         }
         Update: {
@@ -269,7 +378,89 @@ export interface Database {
           max_depth?: number
           confidence_threshold?: number
           auto_accept_enabled?: boolean
+          temperature?: number
+          num_ctx?: number
+          num_predict?: number
+          timeout_ms?: number
+          min_stage_confidence?: number
+          topic_similarity_threshold?: number
+          max_new_topics_per_item?: number
+          auto_accept_new_topics?: boolean
+          enrichment_enabled_global?: boolean
+          enrichment_min_description_chars?: number
+          enrichment_fetch_timeout_ms?: number
+          enrichment_max_chars?: number
+          prompt_template?: string | null
+          reclassify_on_update?: boolean
+          fresh_ttl_hours?: number
+          archive_retention_days?: number
+          keep_approved_forever?: boolean
+          keep_with_topic_associations?: boolean
           updated_at?: string
+        }
+        Relationships: []
+      }
+      lifecycle_runs: {
+        Row: {
+          id: string
+          started_at: string
+          finished_at: string | null
+          dry_run: boolean
+          archived_count: number
+          deleted_count: number
+          cache_pruned_count: number
+          archived_summary: Json | null
+          deleted_summary: Json | null
+          error: string | null
+        }
+        Insert: {
+          id?: string
+          started_at?: string
+          finished_at?: string | null
+          dry_run?: boolean
+          archived_count?: number
+          deleted_count?: number
+          cache_pruned_count?: number
+          archived_summary?: Json | null
+          deleted_summary?: Json | null
+          error?: string | null
+        }
+        Update: {
+          id?: string
+          started_at?: string
+          finished_at?: string | null
+          dry_run?: boolean
+          archived_count?: number
+          deleted_count?: number
+          cache_pruned_count?: number
+          archived_summary?: Json | null
+          deleted_summary?: Json | null
+          error?: string | null
+        }
+        Relationships: []
+      }
+      enrichment_cache: {
+        Row: {
+          url: string
+          fetched_at: string
+          content: string | null
+          status: EnrichmentCacheStatus
+          error: string | null
+          byte_length: number
+        }
+        Insert: {
+          url: string
+          fetched_at?: string
+          content?: string | null
+          status: EnrichmentCacheStatus
+          error?: string | null
+        }
+        Update: {
+          url?: string
+          fetched_at?: string
+          content?: string | null
+          status?: EnrichmentCacheStatus
+          error?: string | null
         }
         Relationships: []
       }
@@ -289,6 +480,8 @@ export interface Database {
           level: number
           description: string | null
           is_fixed_root: boolean
+          topic_status: TopicStatus
+          proposed_by_llm: boolean
           path_array: string[]
           full_path: string
         }
@@ -304,6 +497,9 @@ export interface Database {
           review_pending: number
           items_last_24h: number
           avg_primary_confidence: number | null
+          fresh_items: number
+          archived_items: number
+          suggested_topics_count: number
         }
       }
       items_per_root: {
@@ -333,6 +529,18 @@ export interface Database {
           status: ClassificationRunStatus
           duration_ms: number | null
           error_message: string | null
+          created_at: string
+        }
+      }
+      pending_topic_suggestions: {
+        Row: {
+          id: string
+          name: string
+          parent_id: string | null
+          level: number
+          proposed_from_item_id: string | null
+          proposed_from_item_title: string | null
+          parent_full_path: string | null
           created_at: string
         }
       }
@@ -370,6 +578,14 @@ export interface Database {
           column_default: string
         }[]
       }
+      match_topic_by_name: {
+        Args: { p_name: string; p_parent_id: string | null; p_threshold: number }
+        Returns: { id: string; name: string; similarity: number }[]
+      }
+      upsert_classifier_prompt: {
+        Args: { p_content: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
@@ -397,11 +613,20 @@ export type IncomingItemTopicUpdate = Database['public']['Tables']['incoming_ite
 export type ClassificationRun = Database['public']['Tables']['classification_runs']['Row']
 export type ClassificationRunInsert = Database['public']['Tables']['classification_runs']['Insert']
 
+export type ClassifierPrompt = Database['public']['Tables']['classifier_prompts']['Row']
+
 export type ClassifierSettings = Database['public']['Tables']['classifier_settings']['Row']
 export type ClassifierSettingsUpdate = Database['public']['Tables']['classifier_settings']['Update']
+
+export type LifecycleRun = Database['public']['Tables']['lifecycle_runs']['Row']
+export type LifecycleRunInsert = Database['public']['Tables']['lifecycle_runs']['Insert']
+
+export type EnrichmentCache = Database['public']['Tables']['enrichment_cache']['Row']
+export type EnrichmentCacheInsert = Database['public']['Tables']['enrichment_cache']['Insert']
 
 export type TopicWithPath = Database['public']['Views']['topics_with_path']['Row']
 export type DashboardStats = Database['public']['Views']['dashboard_stats']['Row']
 export type ItemsPerRoot = Database['public']['Views']['items_per_root']['Row']
 export type LowConfidenceItem = Database['public']['Views']['low_confidence_items']['Row']
 export type RecentClassification = Database['public']['Views']['recent_classifications']['Row']
+export type PendingTopicSuggestion = Database['public']['Views']['pending_topic_suggestions']['Row']

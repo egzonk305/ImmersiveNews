@@ -6,7 +6,10 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(npx tsc *)",
-      "Bash(xargs cat *)"
+      "Bash(xargs cat *)",
+      "Bash(npm install *)",
+      "Bash(ls docs/superpowers/plans)",
+      "Bash(mkdir -p docs/superpowers/plans)"
     ]
   }
 }

@@ -45,6 +45,8 @@ export interface GenerateOptions {
   prompt: string
   format?: 'json'
   temperature?: number
+  numCtx?: number
+  numPredict?: number
   timeoutMs?: number
 }
 
@@ -64,8 +66,8 @@ export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
     think: false,
     options: {
       temperature: opts.temperature ?? 0.2,
-      num_ctx: 8192,
-      num_predict: 400,
+      num_ctx: opts.numCtx ?? 8192,
+      num_predict: opts.numPredict ?? 400,
     },
   }
 
