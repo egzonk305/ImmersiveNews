@@ -58,7 +58,6 @@ export async function enrichItem(
         content: truncated,
         status: (truncated ? 'success' : 'failed') as 'success' | 'failed',
         error: truncated ? null : 'Kein Inhalt extrahiert',
-        byte_length: truncated ? Buffer.byteLength(truncated, 'utf8') : 0,
       },
       { onConflict: 'url' }
     )
@@ -83,7 +82,6 @@ export async function enrichItem(
         content: null,
         status: 'failed' as const,
         error: msg,
-        byte_length: 0,
       },
       { onConflict: 'url' }
     )
