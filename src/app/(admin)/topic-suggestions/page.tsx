@@ -8,6 +8,7 @@ export default function TopicSuggestionsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+  const [processing, setProcessing] = useState<Set<string>>(new Set())
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -28,6 +29,8 @@ export default function TopicSuggestionsPage() {
   }, [load])
 
   async function handleAction(id: string, action: 'approve' | 'reject') {
+    if (processing.has(id)) return
+    setProcessing(prev => new Set([...prev, id]))
     setError(null)
     setInfo(null)
     try {
@@ -41,11 +44,21 @@ export default function TopicSuggestionsPage() {
         setInfo(`Topic ${actionLabel}.`)
         setSuggestions(prev => prev.filter(s => s.id !== id))
       } else {
-        const json = await res.json()
-        setError(json.error || 'Fehler beim Verarbeiten')
+        try {
+          const json = await res.json()
+          setError(json.error || 'Fehler beim Verarbeiten')
+        } catch {
+          setError(`HTTP ${res.status}: Fehler beim Verarbeiten`)
+        }
       }
     } catch {
       setError('Netzwerkfehler')
+    } finally {
+      setProcessing(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
@@ -123,13 +136,15 @@ export default function TopicSuggestionsPage() {
                   <div className="flex gap-2 flex-shrink-0">
                     <button
                       onClick={() => handleAction(s.id, 'approve')}
-                      className="rounded px-3 py-1.5 bg-green-600 text-white text-sm hover:bg-green-700 transition-colors font-medium"
+                      disabled={processing.has(s.id)}
+                      className="rounded px-3 py-1.5 bg-green-600 text-white text-sm hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       ✓ Annehmen
                     </button>
                     <button
                       onClick={() => handleAction(s.id, 'reject')}
-                      className="rounded px-3 py-1.5 bg-red-600 text-white text-sm hover:bg-red-700 transition-colors font-medium"
+                      disabled={processing.has(s.id)}
+                      className="rounded px-3 py-1.5 bg-red-600 text-white text-sm hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       ✕ Ablehnen
                     </button>

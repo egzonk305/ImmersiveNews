@@ -17,11 +17,14 @@ export async function PATCH(
   const supabase = await createClient()
   const newStatus = body.data.action === 'approve' ? 'active' : 'rejected'
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('topics')
     .update({ topic_status: newStatus })
     .eq('id', id)
+    .select('id')
+    .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!data) return NextResponse.json({ error: 'Topic nicht gefunden' }, { status: 404 })
   return NextResponse.json({ ok: true, topic_status: newStatus })
 }
