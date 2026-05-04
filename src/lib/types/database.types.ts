@@ -454,6 +454,7 @@ export interface Database {
           content?: string | null
           status: EnrichmentCacheStatus
           error?: string | null
+          byte_length?: number
         }
         Update: {
           url?: string
@@ -461,6 +462,7 @@ export interface Database {
           content?: string | null
           status?: EnrichmentCacheStatus
           error?: string | null
+          byte_length?: number
         }
         Relationships: []
       }

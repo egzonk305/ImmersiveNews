@@ -59,7 +59,7 @@ export async function enrichItem(
         status: (truncated ? 'success' : 'failed') as 'success' | 'failed',
         error: truncated ? null : 'Kein Inhalt extrahiert',
         byte_length: truncated ? Buffer.byteLength(truncated, 'utf8') : 0,
-      } as Database['public']['Tables']['enrichment_cache']['Insert'] & { byte_length: number },
+      },
       { onConflict: 'url' }
     )
 
@@ -84,7 +84,7 @@ export async function enrichItem(
         status: 'failed' as const,
         error: msg,
         byte_length: 0,
-      } as Database['public']['Tables']['enrichment_cache']['Insert'] & { byte_length: number },
+      },
       { onConflict: 'url' }
     )
     await supabase
