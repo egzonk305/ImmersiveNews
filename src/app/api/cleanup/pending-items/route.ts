@@ -11,6 +11,10 @@ export async function DELETE(req: NextRequest) {
     }
     const { olderThanDays, action, onlyWithoutTopic } = body
 
+    if (typeof olderThanDays !== 'number' || !Number.isFinite(olderThanDays) || olderThanDays < 1) {
+      return NextResponse.json({ error: 'olderThanDays muss eine positive Zahl sein' }, { status: 400 })
+    }
+
     if (!['reject', 'delete'].includes(action)) {
       return NextResponse.json({ error: 'Ungültige Aktion' }, { status: 400 })
     }
@@ -39,7 +43,7 @@ export async function DELETE(req: NextRequest) {
     if (action === 'reject') {
       const { error } = await supabase
         .from('incoming_items')
-        .update({ status: 'rejected' })
+        .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
         .in('id', ids)
       if (error) throw new Error(error.message)
     } else {
