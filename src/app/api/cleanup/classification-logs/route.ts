@@ -9,6 +9,12 @@ export async function DELETE(req: NextRequest) {
       statusFilter: 'all' | 'failed_only'
     }
     const { olderThanDays, statusFilter } = body
+
+    // Validiere olderThanDays
+    if (typeof olderThanDays !== 'number' || !Number.isFinite(olderThanDays) || olderThanDays < 1) {
+      return NextResponse.json({ error: 'olderThanDays muss eine positive Zahl sein' }, { status: 400 })
+    }
+
     const supabase = await createClient()
     const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString()
 
@@ -25,7 +31,8 @@ export async function DELETE(req: NextRequest) {
     if (error) throw new Error(error.message)
 
     // Verwaiste classifier_prompts bereinigen
-    await supabase.rpc('cleanup_orphaned_prompts').maybeSingle()
+    const { error: rpcError } = await supabase.rpc('cleanup_orphaned_prompts')
+    if (rpcError) console.error('cleanup_orphaned_prompts fehlgeschlagen:', rpcError.message)
 
     return NextResponse.json({ data: { affected: count ?? 0 } })
   } catch (error) {
