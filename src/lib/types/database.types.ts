@@ -586,6 +586,10 @@ export interface Database {
         Args: { p_content: string }
         Returns: string
       }
+      cleanup_orphaned_prompts: {
+        Args: Record<string, never>
+        Returns: void
+      }
     }
     Enums: {
       [_ in never]: never
