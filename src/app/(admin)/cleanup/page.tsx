@@ -55,6 +55,7 @@ export default function CleanupPage() {
   const [running, setRunning] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewError, setPreviewError] = useState<string | null>(null)
 
   // Pending-Items Filter
   const [pendingDays, setPendingDays] = useState(7)
@@ -69,11 +70,14 @@ export default function CleanupPage() {
 
   const loadPreview = useCallback(async () => {
     setLoading(true)
+    setPreviewError(null)
     try {
       const res = await fetch('/api/cleanup/preview')
       const json = await res.json()
       if (res.ok) setPreview(json.data)
-    } catch { /* silent */ } finally {
+    } catch {
+      setPreviewError('Vorschau konnte nicht geladen werden.')
+    } finally {
       setLoading(false)
     }
   }, [])
@@ -126,6 +130,11 @@ export default function CleanupPage() {
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-red-400">✕</button>
+        </div>
+      )}
+      {previewError && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          ⚠ {previewError}
         </div>
       )}
 
@@ -187,7 +196,7 @@ export default function CleanupPage() {
               <button
                 onClick={() => ask({
                   title: 'Artikel ablehnen?',
-                  description: `Alle ${preview?.pendingItems ?? 0} betroffenen Items werden auf 'Abgelehnt' gesetzt.`,
+                  description: 'Alle betroffenen Items werden auf \'Abgelehnt\' gesetzt.',
                   onConfirm: () => runAction('/api/cleanup/pending-items', { olderThanDays: pendingDays, action: 'reject', onlyWithoutTopic: pendingOnlyWithoutTopic }),
                 })}
                 className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
@@ -197,7 +206,7 @@ export default function CleanupPage() {
               <button
                 onClick={() => ask({
                   title: 'Artikel löschen?',
-                  description: `${preview?.pendingItems ?? 0} Items werden unwiderruflich gelöscht.`,
+                  description: 'Die gefilterten Items werden unwiderruflich gelöscht.',
                   onConfirm: () => runAction('/api/cleanup/pending-items', { olderThanDays: pendingDays, action: 'delete', onlyWithoutTopic: pendingOnlyWithoutTopic }),
                 })}
                 className="rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
@@ -239,7 +248,7 @@ export default function CleanupPage() {
             <button
               onClick={() => ask({
                 title: 'KI-Logs löschen?',
-                description: `${preview?.classificationLogs ?? 0} Log-Einträge werden unwiderruflich gelöscht.`,
+                description: 'Die gefilterten Log-Einträge werden unwiderruflich gelöscht.',
                 onConfirm: () => runAction('/api/cleanup/classification-logs', { olderThanDays: logDays, statusFilter: logStatusFilter }),
               })}
               className="ml-auto rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
@@ -270,7 +279,7 @@ export default function CleanupPage() {
             <button
               onClick={() => ask({
                 title: 'Gesamten Cache leeren?',
-                description: `Alle ${preview?.enrichmentCache ?? 0} Cache-Einträge werden gelöscht. Zukünftige Klassifizierungen holen Inhalte neu.`,
+                description: 'Alle Cache-Einträge werden gelöscht. Zukünftige Klassifizierungen holen Inhalte neu.',
                 onConfirm: () => runAction('/api/cleanup/enrichment-cache', { scope: 'all' }),
               })}
               className="rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
@@ -291,7 +300,7 @@ export default function CleanupPage() {
             <button
               onClick={() => ask({
                 title: 'Abgelehnte Topics löschen?',
-                description: `${preview?.rejectedTopics ?? 0} nicht referenzierte, abgelehnte Topics werden gelöscht.`,
+                description: 'Nicht referenzierte, abgelehnte Topics werden gelöscht.',
                 onConfirm: () => runAction('/api/cleanup/rejected-topics', {}),
               })}
               className="rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
@@ -324,7 +333,7 @@ export default function CleanupPage() {
             <button
               onClick={() => ask({
                 title: 'Lifecycle-Logs löschen?',
-                description: `${preview?.lifecycleLogs ?? 0} alte Log-Einträge werden gelöscht.`,
+                description: 'Die gefilterten Log-Einträge werden gelöscht.',
                 onConfirm: () => runAction('/api/cleanup/lifecycle-logs', { olderThanDays: lifecycleDays }),
               })}
               className="ml-auto rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
