@@ -7,16 +7,16 @@ export async function GET() {
     const supabase = await createClient()
 
     const [
-      { count: pendingItems },
-      { count: classificationLogs },
-      { count: enrichmentCache },
-      { count: rejectedTopics },
-      { count: lifecycleLogs },
+      { count: pendingItems, error: e1 },
+      { count: classificationLogs, error: e2 },
+      { count: enrichmentCache, error: e3 },
+      { count: rejectedTopics, error: e4 },
+      { count: lifecycleLogs, error: e5 },
     ] = await Promise.all([
       supabase
         .from('incoming_items')
         .select('*', { count: 'exact', head: true })
-        .in('status', ['pending', 'failed'])
+        .eq('status', 'pending')
         .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
       supabase
         .from('classification_runs')
@@ -34,6 +34,9 @@ export async function GET() {
         .select('*', { count: 'exact', head: true })
         .lt('started_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
     ])
+
+    const firstError = e1 ?? e2 ?? e3 ?? e4 ?? e5
+    if (firstError) throw new Error(firstError.message)
 
     return NextResponse.json({
       data: {
