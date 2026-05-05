@@ -55,6 +55,7 @@ export default function ReviewPage() {
   const [bulkClassifying, setBulkClassifying] = useState(false)
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; success: number; failed: number } | null>(null)
   const bulkStopRef = useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
   const [pickerOpen, setPickerOpen] = useState<string | null>(null)
   const pageSize = 20
 
@@ -171,40 +172,77 @@ export default function ReviewPage() {
     if (!confirm('Alle pending Items klassifizieren?')) return
     setError(null); setInfo(null)
     setBulkClassifying(true)
+    setBulkProgress({ current: 0, total: 0, success: 0, failed: 0 })
     bulkStopRef.current = false
+    const controller = new AbortController()
+    abortControllerRef.current = controller
 
-    // Alle unklassifizierten IDs laden (processing_state = pending oder failed)
-    const [r1, r2] = await Promise.all([
-      fetch('/api/review?status=all&processing_state=pending&pageSize=500&page=1'),
-      fetch('/api/review?status=all&processing_state=failed&pageSize=500&page=1'),
-    ])
-    const [j1, j2] = await Promise.all([r1.json(), r2.json()])
-    if (!r1.ok) { setError(j1.error); setBulkClassifying(false); return }
+    try {
+      // Alle unklassifizierten IDs laden (processing_state = pending oder failed)
+      const [r1, r2] = await Promise.all([
+        fetch('/api/review?status=all&processing_state=pending&pageSize=500&page=1', {
+          signal: controller.signal,
+        }),
+        fetch('/api/review?status=all&processing_state=failed&pageSize=500&page=1', {
+          signal: controller.signal,
+        }),
+      ])
+      const [j1, j2] = await Promise.all([r1.json(), r2.json()])
+      if (!r1.ok) { setError(j1.error); return }
+      if (!r2.ok) { setError(j2.error); return }
 
-    const ids: string[] = [
-      ...(j1.data ?? []).map((i: { id: string }) => i.id),
-      ...(j2.data ?? []).map((i: { id: string }) => i.id),
-    ]
+      const ids: string[] = [
+        ...(j1.data ?? []).map((i: { id: string }) => i.id),
+        ...(j2.data ?? []).map((i: { id: string }) => i.id),
+      ]
 
-    if (ids.length === 0) { setInfo('Keine pending Items.'); setBulkClassifying(false); return }
+      if (ids.length === 0) { setInfo('Keine pending Items.'); return }
 
-    let success = 0, failed = 0
-    setBulkProgress({ current: 0, total: ids.length, success: 0, failed: 0 })
+      let success = 0
+      let failed = 0
+      let current = 0
+      const concurrency = 3
+      setBulkProgress({ current, total: ids.length, success, failed })
 
-    for (let i = 0; i < ids.length; i++) {
-      if (bulkStopRef.current) break
-      try {
-        const r = await fetch(`/api/classify/${ids[i]}`, { method: 'POST' })
-        const j = await r.json()
-        if (r.ok && j.data?.status === 'success') success++; else failed++
-      } catch { failed++ }
-      setBulkProgress({ current: i + 1, total: ids.length, success, failed })
+      for (let i = 0; i < ids.length; i += concurrency) {
+        if (bulkStopRef.current) break
+        const chunk = ids.slice(i, i + concurrency)
+        const response = await fetch('/api/classify/batch-parallel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: chunk, concurrency }),
+          signal: controller.signal,
+        })
+        const json = await response.json()
+        if (!response.ok) throw new Error(json.error ?? 'Fehler bei Batch-Klassifizierung')
+
+        success += json.data.success ?? 0
+        failed += json.data.failed ?? 0
+        current += chunk.length
+        setBulkProgress({ current, total: ids.length, success, failed })
+      }
+
+      const stopped = bulkStopRef.current
+      setInfo(
+        stopped
+          ? `Gestoppt: ${success} klassifiziert, ${failed} fehlgeschlagen.`
+          : `${success} von ${ids.length} klassifiziert (${failed} Fehler)`
+      )
+      loadItems(); loadStats()
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        setError(e instanceof Error ? e.message : 'Fehler bei Batch-Klassifizierung')
+      }
+    } finally {
+      setBulkProgress(null)
+      setBulkClassifying(false)
+      abortControllerRef.current = null
     }
+  }
 
-    setInfo(`${success} von ${ids.length} klassifiziert (${failed} Fehler)`)
-    setBulkProgress(null)
-    setBulkClassifying(false)
-    loadItems(); loadStats()
+  const stopBulkClassify = () => {
+    bulkStopRef.current = true
+    abortControllerRef.current?.abort()
   }
 
   const handleAddManual = async (itemId: string, topicId: string) => {
@@ -246,26 +284,6 @@ export default function ReviewPage() {
         icon="✓"
         action={
           <div className="flex items-center gap-3">
-            {bulkProgress && (
-              <div className="flex items-center gap-2">
-                <div className="w-32 h-1.5 rounded-full bg-gray-200 overflow-hidden">
-                  <div
-                    className="h-full bg-purple-500 transition-all"
-                    style={{ width: `${Math.round((bulkProgress.current / bulkProgress.total) * 100)}%` }}
-                  />
-                </div>
-                <span className="text-xs text-gray-500 whitespace-nowrap">
-                  {bulkProgress.current}/{bulkProgress.total}
-                  {bulkProgress.failed > 0 && <span className="text-red-500"> · {bulkProgress.failed} Fehler</span>}
-                </span>
-                <button
-                  onClick={() => { bulkStopRef.current = true }}
-                  className="rounded border border-red-200 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
-                >
-                  Stopp
-                </button>
-              </div>
-            )}
             <button
               onClick={handleClassifyAll}
               disabled={bulkClassifying}
@@ -286,6 +304,32 @@ export default function ReviewPage() {
           </div>
         }
       />
+
+      {bulkClassifying && bulkProgress && (
+        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-blue-700 font-medium">
+              Klassifiziere... {bulkProgress.current} / {bulkProgress.total}
+            </span>
+            <div className="flex items-center gap-3 text-xs text-blue-600">
+              <span>✓ {bulkProgress.success}</span>
+              <span className="text-red-500">× {bulkProgress.failed}</span>
+              <button
+                onClick={stopBulkClassify}
+                className="rounded border border-blue-300 px-2 py-0.5 text-xs text-blue-700 hover:bg-blue-100"
+              >
+                Stop
+              </button>
+            </div>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-blue-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-blue-500 transition-all duration-300"
+              style={{ width: `${bulkProgress.total > 0 ? (bulkProgress.current / bulkProgress.total) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between">

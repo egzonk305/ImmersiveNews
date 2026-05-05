@@ -9,15 +9,27 @@ type Supabase = Parameters<typeof db.getRootTopics>[0]
 /** Root-Topics mit Kinderzahl anreichern */
 export async function getRootTopicsWithCount(supabase: Supabase) {
   const roots = await db.getRootTopics(supabase)
+  if (roots.length === 0) return []
 
-  const enriched = await Promise.all(
-    roots.map(async (topic) => {
-      const childCount = await db.getChildCount(supabase, topic.id)
-      return { ...topic, childCount, isLeaf: childCount === 0 } as TopicNode
-    })
-  )
+  const rootIds = roots.map(root => root.id)
+  const { data: children, error } = await supabase
+    .from('topics')
+    .select('parent_id')
+    .in('parent_id', rootIds)
 
-  return enriched
+  if (error) throw new Error(`getRootTopicsWithCount: ${error.message}`)
+
+  const countMap = new Map<string, number>()
+  for (const child of children ?? []) {
+    if (child.parent_id) {
+      countMap.set(child.parent_id, (countMap.get(child.parent_id) ?? 0) + 1)
+    }
+  }
+
+  return roots.map((topic) => {
+    const childCount = countMap.get(topic.id) ?? 0
+    return { ...topic, childCount, isLeaf: childCount === 0 } as TopicNode
+  })
 }
 
 /** Topic mit Kindern und Breadcrumb */

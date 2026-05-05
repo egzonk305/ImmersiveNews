@@ -10,6 +10,25 @@
 
 ---
 
+## Aktueller Stand
+
+Gespeichert. Hier der aktuelle Stand zusammengefasst:
+
+**Fertig (Tasks 1–11):**
+- Alle 6 Cleanup-API-Routen (`/api/cleanup/*`)
+- Cleanup-Dashboard UI (`/admin/cleanup`)
+- SQL-Funktion `cleanup_orphaned_prompts`
+- Task 5fix: Cleanup-UI zeigt `previewError`; Bestätigungsdialoge nutzen generische Texte
+- Task 6: Sidebar-Link "Aufräumen"
+- Task 7–8: Baum-Redesign mit `depth=2` API, `TopicTreeBrowser` Rewrite, Inline-Rename und Inline-Kind-Anlage
+- Task 9–11: Performance (N+1-Fix, parallele Batch-KI, DB-Indizes)
+
+**Noch offen:** Keine Plan-Tasks mehr offen. Supabase-Migration `20260505_016_performance_indexes.sql` muss noch in der Datenbank angewendet werden, falls das nicht bereits passiert ist.
+
+Validierung: `npm run typecheck` und `npm run build` erfolgreich.
+
+---
+
 ## Dateiübersicht
 
 **Neu erstellen:**

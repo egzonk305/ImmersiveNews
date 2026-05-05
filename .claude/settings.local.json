@@ -9,7 +9,11 @@
       "Bash(xargs cat *)",
       "Bash(npm install *)",
       "Bash(ls docs/superpowers/plans)",
-      "Bash(mkdir -p docs/superpowers/plans)"
+      "Bash(mkdir -p docs/superpowers/plans)",
+      "PowerShell(cd \"C:\\\\Users\\\\egzon\\\\Documents\\\\ImmersiveNews\"; npx tsc --noEmit 2>&1; Write-Host \"TS Exit: $LASTEXITCODE\")",
+      "PowerShell(cd \"C:\\\\Users\\\\egzon\\\\Documents\\\\ImmersiveNews\"; npx tsc --noEmit 2>&1; Write-Host \"TS: $LASTEXITCODE\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\egzon\\\\Documents\\\\ImmersiveNews\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)"
     ]
   }
 }

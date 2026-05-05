@@ -434,3 +434,53 @@ export async function classifyAllPending(
 
   return classifyBatch(supabase, items.map(i => i.id))
 }
+
+export async function classifyParallel(
+  supabase: SupabaseClient<Database>,
+  itemIds: string[],
+  concurrency = 3,
+  onProgress?: (progress: { current: number; total: number; success: number; failed: number }) => void,
+  signal?: AbortSignal
+): Promise<{ success: number; failed: number; results: ClassifyResult[] }> {
+  let current = 0
+  let success = 0
+  let failed = 0
+  const results: ClassifyResult[] = []
+  const safeConcurrency = Math.min(Math.max(concurrency, 1), 10)
+
+  for (let i = 0; i < itemIds.length; i += safeConcurrency) {
+    if (signal?.aborted) break
+
+    const batch = itemIds.slice(i, i + safeConcurrency)
+    const batchResults = await Promise.allSettled(
+      batch.map(id => classifyItem(supabase, id))
+    )
+
+    for (let j = 0; j < batchResults.length; j++) {
+      current++
+      const result = batchResults[j]
+
+      if (result.status === 'fulfilled') {
+        results.push(result.value)
+        if (result.value.status === 'success') success++
+        else failed++
+      } else {
+        failed++
+        results.push({
+          item_id: batch[j],
+          status: 'failed',
+          candidates_saved: 0,
+          primary_topic_id: null,
+          primary_confidence: null,
+          auto_accepted: false,
+          error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+          run_id: '',
+        })
+      }
+
+      onProgress?.({ current, total: itemIds.length, success, failed })
+    }
+  }
+
+  return { success, failed, results }
+}
