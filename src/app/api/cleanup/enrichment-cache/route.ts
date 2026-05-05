@@ -14,8 +14,8 @@ export async function DELETE(req: NextRequest) {
     const supabase = await createClient()
 
     const { error, count } = scope === 'all'
-      ? await supabase.from('enrichment_cache').delete().neq('url', '')
-      : await supabase.from('enrichment_cache').delete().eq('status', 'failed')
+      ? await supabase.from('enrichment_cache').delete({ count: 'exact' }).neq('url', '')
+      : await supabase.from('enrichment_cache').delete({ count: 'exact' }).eq('status', 'failed')
 
     if (error) throw new Error(error.message)
     return NextResponse.json({ data: { affected: count ?? 0 } })

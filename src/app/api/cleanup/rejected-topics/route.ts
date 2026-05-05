@@ -20,11 +20,11 @@ export async function DELETE() {
 
     let query = supabase
       .from('topics')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('topic_status', 'rejected')
 
     if (referencedIds.length > 0) {
-      query = query.not('id', 'in', `(${referencedIds.map(id => `'${id}'`).join(',')})`)
+      query = query.not('id', 'in', `(${referencedIds.join(',')})`)
     }
 
     const { error, count } = await query

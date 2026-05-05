@@ -16,7 +16,7 @@ export async function DELETE(req: NextRequest) {
 
     const { error, count } = await supabase
       .from('lifecycle_runs')
-      .delete()
+      .delete({ count: 'exact' })
       .lt('started_at', cutoff)
 
     if (error) throw new Error(error.message)
