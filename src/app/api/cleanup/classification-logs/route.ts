@@ -30,10 +30,6 @@ export async function DELETE(req: NextRequest) {
     const { error, count } = await query
     if (error) throw new Error(error.message)
 
-    // Verwaiste classifier_prompts bereinigen
-    const { error: rpcError } = await supabase.rpc('cleanup_orphaned_prompts')
-    if (rpcError) console.error('cleanup_orphaned_prompts fehlgeschlagen:', rpcError.message)
-
     return NextResponse.json({ data: { affected: count ?? 0 } })
   } catch (error) {
     return NextResponse.json({ error: formatError(error) }, { status: 500 })

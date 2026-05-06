@@ -11,7 +11,6 @@ export async function GET() {
       { count: classificationLogs, error: e2 },
       { count: enrichmentCache, error: e3 },
       { count: rejectedTopics, error: e4 },
-      { count: lifecycleLogs, error: e5 },
     ] = await Promise.all([
       supabase
         .from('incoming_items')
@@ -29,13 +28,9 @@ export async function GET() {
         .from('topics')
         .select('*', { count: 'exact', head: true })
         .eq('topic_status', 'rejected'),
-      supabase
-        .from('lifecycle_runs')
-        .select('*', { count: 'exact', head: true })
-        .lt('started_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
     ])
 
-    const firstError = e1 ?? e2 ?? e3 ?? e4 ?? e5
+    const firstError = e1 ?? e2 ?? e3 ?? e4
     if (firstError) throw new Error(firstError.message)
 
     return NextResponse.json({
@@ -44,7 +39,6 @@ export async function GET() {
         classificationLogs: classificationLogs ?? 0,
         enrichmentCache: enrichmentCache ?? 0,
         rejectedTopics: rejectedTopics ?? 0,
-        lifecycleLogs: lifecycleLogs ?? 0,
       },
     })
   } catch (error) {

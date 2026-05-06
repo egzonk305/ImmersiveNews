@@ -4,7 +4,6 @@ import type {
   Database,
   IncomingItem,
   Json,
-  NewsStory,
   RssFeed,
   Topic,
   TopicPath,
@@ -323,44 +322,10 @@ export async function getRelevantTopicContextForItem(supabase: Supabase, item: I
     }))
   }
 
-  let storyQuery = supabase
-    .from('news_stories')
-    .select('*, latest:incoming_items!news_stories_latest_item_id_fkey(title)')
-    .order('updated_at', { ascending: false })
-    .limit(50)
-
-  if (filters.length > 0) {
-    storyQuery = storyQuery.or(tokens.slice(0, 8).flatMap(token => [
-      `story_key.ilike.%${createTopicSlug(token)}%`,
-      `title.ilike.%${token}%`,
-      `current_summary.ilike.%${token}%`,
-    ]).join(','))
-  }
-
-  const { data: stories } = await storyQuery
-  const existing_similar_stories: RelevantStory[] = (stories ?? [])
-    .map(story => ({
-      story: story as unknown as NewsStory & { latest?: { title: string | null } | { title: string | null }[] | null },
-      score: scoreText(`${story.story_key} ${story.title} ${story.current_summary ?? ''}`, tokens),
-    }))
-    .filter(entry => entry.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, maxStories)
-    .map(({ story }) => ({
-      id: story.id,
-      story_key: story.story_key,
-      title: story.title,
-      current_summary: story.current_summary,
-      latest_item_title: Array.isArray(story.latest)
-        ? story.latest[0]?.title ?? null
-        : story.latest?.title ?? null,
-      updated_at: story.updated_at,
-    }))
-
   return {
     existing_relevant_topics,
     existing_relevant_paths,
-    existing_similar_stories,
+    existing_similar_stories: [],
   }
 }
 
@@ -452,99 +417,6 @@ async function resolveOrCreateTopicSegment(
   throw new Error(`Topic-Segment konnte nicht erstellt werden: ${error?.message ?? canonical}`)
 }
 
-async function upsertStory(
-  supabase: Supabase,
-  item: IncomingItem,
-  result: DynamicNewsPathResult
-) {
-  const storyKey = createTopicSlug(result.story.story_key || result.story.title)
-  let story: NewsStory | null = null
-
-  if (result.story.existing_story_id) {
-    const { data } = await supabase
-      .from('news_stories')
-      .select('*')
-      .eq('id', result.story.existing_story_id)
-      .maybeSingle()
-    story = data ?? null
-  }
-
-  if (!story) {
-    const { data } = await supabase
-      .from('news_stories')
-      .select('*')
-      .eq('story_key', storyKey)
-      .maybeSingle()
-    story = data ?? null
-  }
-
-  const summary = result.story.new_current_summary || result.summary_short
-  if (!story) {
-    const { data, error } = await supabase
-      .from('news_stories')
-      .insert({
-        story_key: storyKey,
-        root_topic: result.root_topic,
-        title: result.story.title || result.headline,
-        current_summary: summary,
-      })
-      .select('*')
-      .single()
-    if (error || !data) throw new Error(`Story konnte nicht erstellt werden: ${error?.message}`)
-    story = data
-  } else {
-    const { data, error } = await supabase
-      .from('news_stories')
-      .update({
-        title: result.story.title || story.title,
-        current_summary: summary || story.current_summary,
-        root_topic: result.root_topic,
-      })
-      .eq('id', story.id)
-      .select('*')
-      .single()
-    if (error || !data) throw new Error(`Story konnte nicht aktualisiert werden: ${error?.message}`)
-    story = data
-  }
-
-  await supabase
-    .from('story_items')
-    .upsert({
-      story_id: story.id,
-      incoming_item_id: item.id,
-      relation: result.story.updates_existing_story ? 'update' : 'related',
-    }, { onConflict: 'story_id,incoming_item_id' })
-
-  let shouldReplaceLatest = result.story.should_replace_latest_item || !story.latest_item_id
-  if (!shouldReplaceLatest && story.latest_item_id && item.published_at) {
-    const { data: latest } = await supabase
-      .from('incoming_items')
-      .select('published_at, created_at')
-      .eq('id', story.latest_item_id)
-      .maybeSingle()
-    const currentTs = new Date(item.published_at).getTime()
-    const latestTs = new Date(latest?.published_at ?? latest?.created_at ?? 0).getTime()
-    shouldReplaceLatest = currentTs > latestTs
-  }
-
-  if (shouldReplaceLatest) {
-    await supabase
-      .from('incoming_items')
-      .update({ latest_in_story: false })
-      .eq('story_id', story.id)
-
-    const { data, error } = await supabase
-      .from('news_stories')
-      .update({ latest_item_id: item.id })
-      .eq('id', story.id)
-      .select('*')
-      .single()
-    if (error || !data) throw new Error(`Latest-Story konnte nicht gesetzt werden: ${error?.message}`)
-    story = data
-  }
-
-  return { story, latest: shouldReplaceLatest, storyKey }
-}
 
 export async function applyNewsPathResult(
   supabase: Supabase,
@@ -610,7 +482,6 @@ export async function applyNewsPathResult(
     if (error) throw new Error(`incoming_item_topics: ${error.message}`)
   }
 
-  const { story, latest, storyKey } = await upsertStory(supabase, item, result)
   const primaryTopicId = linkedTopics[0]?.topic.id ?? root.id
   const now = new Date().toISOString()
 
@@ -625,9 +496,6 @@ export async function applyNewsPathResult(
         merge_suggestions: result.merge_suggestions,
       } as unknown as Json,
       ai_paths: normalizedPaths.map(path => path.path) as unknown as Json,
-      story_key: storyKey,
-      story_id: story.id,
-      latest_in_story: latest,
       target_topic_id: primaryTopicId,
       processed_at: now,
       processing_state: 'classified',
@@ -639,8 +507,6 @@ export async function applyNewsPathResult(
   if (updateError) throw new Error(`incoming_items update: ${updateError.message}`)
 
   return {
-    storyId: story.id,
-    latest,
     primaryTopicId,
     paths: normalizedPaths.map(path => path.path),
   }
@@ -820,7 +686,6 @@ export async function classifyAndBuildPathsForItem(
       status: 'success',
       skipped: false,
       rootTopic: validation.data.root_topic,
-      storyId: applied.storyId,
       primaryTopicId: applied.primaryTopicId,
       paths: applied.paths,
       runId,

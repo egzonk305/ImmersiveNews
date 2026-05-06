@@ -8,7 +8,6 @@ interface PreviewData {
   classificationLogs: number
   enrichmentCache: number
   rejectedTopics: number
-  lifecycleLogs: number
 }
 
 interface ConfirmState {
@@ -64,9 +63,6 @@ export default function CleanupPage() {
   // Log-Filter
   const [logDays, setLogDays] = useState(14)
   const [logStatusFilter, setLogStatusFilter] = useState<'all' | 'failed_only'>('all')
-
-  // Lifecycle-Filter
-  const [lifecycleDays, setLifecycleDays] = useState(30)
 
   const loadPreview = useCallback(async () => {
     setLoading(true)
@@ -310,38 +306,6 @@ export default function CleanupPage() {
           </div>
         </CleanupCard>
 
-        {/* Lifecycle Logs */}
-        <CleanupCard
-          title="Lifecycle-Log-Historie kürzen"
-          description="Alte Lifecycle-Run-Protokolle aus der lifecycle_runs Tabelle entfernen"
-          count={loading ? 0 : (preview?.lifecycleLogs ?? 0)}
-          countLabel="Einträge"
-        >
-          <div className="flex flex-wrap items-center gap-3 mt-3">
-            <label className="flex items-center gap-2 text-xs text-gray-600">
-              Älter als
-              <input
-                type="number"
-                min={1}
-                max={365}
-                value={lifecycleDays}
-                onChange={e => setLifecycleDays(Number(e.target.value))}
-                className="w-16 rounded border border-gray-200 px-2 py-1 text-xs"
-              />
-              Tage
-            </label>
-            <button
-              onClick={() => ask({
-                title: 'Lifecycle-Logs löschen?',
-                description: 'Die gefilterten Log-Einträge werden gelöscht.',
-                onConfirm: () => runAction('/api/cleanup/lifecycle-logs', { olderThanDays: lifecycleDays }),
-              })}
-              className="ml-auto rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-            >
-              Löschen
-            </button>
-          </div>
-        </CleanupCard>
       </div>
     </div>
   )

@@ -348,85 +348,6 @@ export interface Database {
         }
         Relationships: []
       }
-      classifier_prompts: {
-        Row: {
-          id: string
-          hash: string
-          content: string
-          byte_length: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          hash: string
-          content: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          hash?: string
-          content?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
-      news_stories: {
-        Row: {
-          id: string
-          story_key: string
-          root_topic: string
-          title: string
-          current_summary: string | null
-          latest_item_id: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          story_key: string
-          root_topic: string
-          title: string
-          current_summary?: string | null
-          latest_item_id?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          story_key?: string
-          root_topic?: string
-          title?: string
-          current_summary?: string | null
-          latest_item_id?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      story_items: {
-        Row: {
-          id: string
-          story_id: string
-          incoming_item_id: string
-          relation: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          story_id: string
-          incoming_item_id: string
-          relation?: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          story_id?: string
-          incoming_item_id?: string
-          relation?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
       classifier_settings: {
         Row: {
           id: string
@@ -511,45 +432,6 @@ export interface Database {
           keep_approved_forever?: boolean
           keep_with_topic_associations?: boolean
           updated_at?: string
-        }
-        Relationships: []
-      }
-      lifecycle_runs: {
-        Row: {
-          id: string
-          started_at: string
-          finished_at: string | null
-          dry_run: boolean
-          archived_count: number
-          deleted_count: number
-          cache_pruned_count: number
-          archived_summary: Json | null
-          deleted_summary: Json | null
-          error: string | null
-        }
-        Insert: {
-          id?: string
-          started_at?: string
-          finished_at?: string | null
-          dry_run?: boolean
-          archived_count?: number
-          deleted_count?: number
-          cache_pruned_count?: number
-          archived_summary?: Json | null
-          deleted_summary?: Json | null
-          error?: string | null
-        }
-        Update: {
-          id?: string
-          started_at?: string
-          finished_at?: string | null
-          dry_run?: boolean
-          archived_count?: number
-          deleted_count?: number
-          cache_pruned_count?: number
-          archived_summary?: Json | null
-          deleted_summary?: Json | null
-          error?: string | null
         }
         Relationships: []
       }
@@ -728,10 +610,6 @@ export interface Database {
         Args: { p_content: string }
         Returns: string
       }
-      cleanup_orphaned_prompts: {
-        Args: Record<string, never>
-        Returns: void
-      }
     }
     Enums: {
       [_ in never]: never
@@ -759,17 +637,8 @@ export type IncomingItemTopicUpdate = Database['public']['Tables']['incoming_ite
 export type ClassificationRun = Database['public']['Tables']['classification_runs']['Row']
 export type ClassificationRunInsert = Database['public']['Tables']['classification_runs']['Insert']
 
-export type ClassifierPrompt = Database['public']['Tables']['classifier_prompts']['Row']
-export type NewsStory = Database['public']['Tables']['news_stories']['Row']
-export type NewsStoryInsert = Database['public']['Tables']['news_stories']['Insert']
-export type StoryItem = Database['public']['Tables']['story_items']['Row']
-export type StoryItemInsert = Database['public']['Tables']['story_items']['Insert']
-
 export type ClassifierSettings = Database['public']['Tables']['classifier_settings']['Row']
 export type ClassifierSettingsUpdate = Database['public']['Tables']['classifier_settings']['Update']
-
-export type LifecycleRun = Database['public']['Tables']['lifecycle_runs']['Row']
-export type LifecycleRunInsert = Database['public']['Tables']['lifecycle_runs']['Insert']
 
 export type EnrichmentCache = Database['public']['Tables']['enrichment_cache']['Row']
 export type EnrichmentCacheInsert = Database['public']['Tables']['enrichment_cache']['Insert']
