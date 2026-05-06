@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { classifyAllPending, classifyBatch } from '@/lib/services/classifier.service'
+import {
+  classifyBatchWithPath,
+  classifyAllPendingWithPath,
+} from '@/lib/services/path-classifier.service'
 import { formatError } from '@/lib/utils'
 import { z } from 'zod'
 
@@ -21,22 +24,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const parsed = bodySchema.parse(body)
 
-    const results =
-      'all_pending' in parsed
-        ? await classifyAllPending(supabase, parsed.limit ?? 25)
-        : await classifyBatch(supabase, parsed.ids)
+    if ('all_pending' in parsed) {
+      const results = await classifyAllPendingWithPath(supabase, parsed.limit ?? 25)
+      const ok = results.filter(r => r.status === 'success').length
+      const failed = results.filter(r => r.status !== 'success').length
+      return NextResponse.json({ data: { total: results.length, success: ok, failed, results } })
+    }
 
+    const results = await classifyBatchWithPath(supabase, parsed.ids)
     const ok = results.filter(r => r.status === 'success').length
-    const failed = results.length - ok
+    const failed = results.filter(r => r.status !== 'success').length
 
     return NextResponse.json({
-      data: {
-        total: results.length,
-        success: ok,
-        failed,
-        auto_accepted: results.filter(r => r.auto_accepted).length,
-        results,
-      },
+      data: { total: results.length, success: ok, failed, results },
     })
   } catch (error) {
     return NextResponse.json({ error: formatError(error) }, { status: 500 })

@@ -16,6 +16,7 @@ type ReviewStats = {
 
 type ItemWithFeed = IncomingItem & {
   rss_feeds?: { id: string; name: string; url: string } | null
+  topics?: { id: string; name: string } | null
 }
 
 const statusLabels: Record<string, string> = {
@@ -54,6 +55,7 @@ export default function ReviewPage() {
   const [classifyingId, setClassifyingId] = useState<string | null>(null)
   const [bulkClassifying, setBulkClassifying] = useState(false)
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; success: number; failed: number } | null>(null)
+  const [bulkLimit, setBulkLimit] = useState(200)
   const bulkStopRef = useRef(false)
   const abortControllerRef = useRef<AbortController | null>(null)
   const [pickerOpen, setPickerOpen] = useState<string | null>(null)
@@ -126,8 +128,10 @@ export default function ReviewPage() {
       if (res.ok) {
         setInfo(
           json.data.status === 'success'
-            ? `Klassifiziert: ${json.data.candidates_saved} Kandidaten${json.data.auto_accepted ? ' (auto-akzeptiert)' : ''}`
-            : `Fehlgeschlagen: ${json.data.error}`
+            ? `Klassifiziert: ${json.data.paths?.length ?? 0} Pfade erzeugt`
+            : json.data.status === 'skipped'
+              ? `Übersprungen: ${json.data.skipReason}`
+              : `Fehlgeschlagen: ${json.data.error}`
         )
         setExpandedId(id)
         loadItems(); loadStats()
@@ -174,59 +178,26 @@ export default function ReviewPage() {
     setBulkClassifying(true)
     setBulkProgress({ current: 0, total: 0, success: 0, failed: 0 })
     bulkStopRef.current = false
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-
     try {
-      // Alle unklassifizierten IDs laden (processing_state = pending oder failed)
-      const [r1, r2] = await Promise.all([
-        fetch('/api/review?status=all&processing_state=pending&pageSize=500&page=1', {
-          signal: controller.signal,
-        }),
-        fetch('/api/review?status=all&processing_state=failed&pageSize=500&page=1', {
-          signal: controller.signal,
-        }),
-      ])
-      const [j1, j2] = await Promise.all([r1.json(), r2.json()])
-      if (!r1.ok) { setError(j1.error); return }
-      if (!r2.ok) { setError(j2.error); return }
-
-      const ids: string[] = [
-        ...(j1.data ?? []).map((i: { id: string }) => i.id),
-        ...(j2.data ?? []).map((i: { id: string }) => i.id),
-      ]
-
-      if (ids.length === 0) { setInfo('Keine pending Items.'); return }
-
-      let success = 0
-      let failed = 0
-      let current = 0
-      const concurrency = 3
-      setBulkProgress({ current, total: ids.length, success, failed })
-
-      for (let i = 0; i < ids.length; i += concurrency) {
-        if (bulkStopRef.current) break
-        const chunk = ids.slice(i, i + concurrency)
-        const response = await fetch('/api/classify/batch-parallel', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: chunk, concurrency }),
-          signal: controller.signal,
-        })
-        const json = await response.json()
-        if (!response.ok) throw new Error(json.error ?? 'Fehler bei Batch-Klassifizierung')
-
-        success += json.data.success ?? 0
-        failed += json.data.failed ?? 0
-        current += chunk.length
-        setBulkProgress({ current, total: ids.length, success, failed })
-      }
-
-      const stopped = bulkStopRef.current
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+      const response = await fetch('/api/classify/pending', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: bulkLimit, force: false, includeFailed: false }),
+        signal: controller.signal,
+      })
+      const json = await response.json()
+      if (!response.ok) throw new Error(json.error ?? 'Fehler bei Batch-Klassifizierung')
+      setBulkProgress({
+        current: json.processed,
+        total: json.processed,
+        success: json.succeeded,
+        failed: json.failed,
+      })
       setInfo(
-        stopped
-          ? `Gestoppt: ${success} klassifiziert, ${failed} fehlgeschlagen.`
-          : `${success} von ${ids.length} klassifiziert (${failed} Fehler)`
+        `${json.succeeded} erfolgreich, ${json.failed} fehlgeschlagen, ${json.skipped} übersprungen. ` +
+        `${json.elapsedMs} ms gesamt, Ø ${json.avgMsPerItem} ms/Item.`
       )
       loadItems(); loadStats()
     } catch (e) {
@@ -284,6 +255,17 @@ export default function ReviewPage() {
         icon="✓"
         action={
           <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1 text-xs text-gray-500">
+              Limit
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={bulkLimit}
+                onChange={e => setBulkLimit(Number(e.target.value))}
+                className="w-16 rounded border border-gray-200 px-2 py-1 text-xs"
+              />
+            </label>
             <button
               onClick={handleClassifyAll}
               disabled={bulkClassifying}
@@ -460,6 +442,19 @@ export default function ReviewPage() {
                       {item.description && (
                         <p className="mt-1 text-xs text-gray-600 line-clamp-2">{item.description}</p>
                       )}
+                      {(item.ai_headline || item.ai_summary_short) && (
+                        <div className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2">
+                          {item.ai_headline && (
+                            <p className="text-xs font-medium text-blue-900">{item.ai_headline}</p>
+                          )}
+                          {item.ai_description && (
+                            <p className="mt-1 text-xs text-blue-700">{item.ai_description}</p>
+                          )}
+                          {item.ai_summary_short && (
+                            <p className="mt-1 text-[11px] text-blue-600">{item.ai_summary_short}</p>
+                          )}
+                        </div>
+                      )}
                       <div className="mt-1 flex items-center gap-3 text-[11px] text-gray-400">
                         <span>{formatDate(item.created_at)}</span>
                         {item.published_at && <span>publ. {formatDate(item.published_at)}</span>}
@@ -475,6 +470,22 @@ export default function ReviewPage() {
 
                       {expandedId === item.id && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
+                          {item.topics?.name && (
+                            <div className="mb-3">
+                              <p className="mb-1 text-xs font-medium text-gray-600">Klassifizierter Pfad</p>
+                              <div className="rounded bg-purple-50 border border-purple-100 px-2 py-1.5 text-xs text-purple-800">
+                                {item.topics.name}
+                              </div>
+                            </div>
+                          )}
+
+                          {item.story_key && (
+                            <div className="mb-3 rounded border border-gray-200 px-2 py-1.5 text-xs text-gray-600">
+                              Story: <span className="font-medium text-gray-800">{item.story_key}</span>
+                              {item.latest_in_story && <span className="ml-2 rounded bg-green-50 px-1.5 py-0.5 text-[10px] text-green-700">latest</span>}
+                            </div>
+                          )}
+
                           {/* Enrichment Status */}
                           {item.source_url && (
                             <div className="mb-3 text-xs text-muted-foreground flex items-center gap-2">
