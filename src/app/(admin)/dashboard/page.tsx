@@ -13,6 +13,9 @@ interface DashboardStats {
   review_pending: number
   items_last_24h: number
   avg_primary_confidence: number | null
+  auto_created_topics?: number
+  story_count?: number
+  avg_processing_ms?: number | null
 }
 
 interface RunStats {
@@ -107,9 +110,12 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Aktive Feeds', value: s?.active_feeds, href: '/settings/feeds', icon: '⟳', accent: 'text-green-700 bg-green-50 border-green-200' },
-          { label: 'Pending', value: s?.pending_items, href: '/review?state=pending', icon: '⧖', accent: 'text-amber-700 bg-amber-50 border-amber-200' },
-          { label: 'Klassifiziert', value: s?.classified_items, href: '/review?state=classified', icon: '✓', accent: 'text-blue-700 bg-blue-50 border-blue-200' },
-          { label: 'Fehlerhaft', value: s?.failed_items, href: '/review?state=failed', icon: '⚠', accent: 'text-red-700 bg-red-50 border-red-200' },
+          { label: 'Pending', value: s?.pending_items, href: '/review?status=pending', icon: '⧖', accent: 'text-amber-700 bg-amber-50 border-amber-200' },
+          { label: 'Klassifiziert', value: s?.classified_items, href: '/review?status=pending', icon: '✓', accent: 'text-blue-700 bg-blue-50 border-blue-200' },
+          { label: 'Fehlerhaft', value: s?.failed_items, href: '/review?status=pending', icon: '⚠', accent: 'text-red-700 bg-red-50 border-red-200' },
+          { label: 'Auto-Topics', value: s?.auto_created_topics, href: '/topics', icon: '＋', accent: 'text-purple-700 bg-purple-50 border-purple-200' },
+          { label: 'Storys', value: s?.story_count, href: '/review', icon: '◈', accent: 'text-cyan-700 bg-cyan-50 border-cyan-200' },
+          { label: 'Ø Verarbeitung', value: s?.avg_processing_ms ? `${s.avg_processing_ms} ms` : null, href: '/classification-logs', icon: '⏱', accent: 'text-gray-700 bg-gray-50 border-gray-200' },
         ].map(c => (
           <Link
             key={c.label}

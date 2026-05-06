@@ -38,7 +38,7 @@ function collectExpandableIds(nodes: TreeNode[]) {
   const ids: string[] = []
   const walk = (items: TreeNode[]) => {
     for (const item of items) {
-      if ((item.childCount ?? item.children?.length ?? 0) > 0 && item.level < 5) {
+      if ((item.childCount ?? item.children?.length ?? 0) > 0 && item.level < 8) {
         ids.push(item.id)
       }
       if (item.children) walk(item.children)
@@ -218,6 +218,7 @@ export function TopicTreeBrowser({ roots }: TopicTreeBrowserProps) {
           isLeaf: false,
         })))
         setAddingChildOf(null)
+        setNewChildName('')
       } else {
         setError(json.error ?? 'Fehler beim Anlegen')
       }
@@ -231,7 +232,7 @@ export function TopicTreeBrowser({ roots }: TopicTreeBrowserProps) {
   const renderNode = (node: TreeNode, depth = 0): React.ReactNode => {
     const isExpanded = expanded.has(node.id)
     const isRenaming = renamingId === node.id
-    const canExpand = node.level < 5 && !node.isLeaf
+    const canExpand = node.level < 8 && !node.isLeaf
 
     return (
       <div key={node.id}>
@@ -308,7 +309,7 @@ export function TopicTreeBrowser({ roots }: TopicTreeBrowserProps) {
                   >
                     ✎
                   </button>
-                  {node.level < 5 && (
+                  {node.level < 8 && (
                     <button
                       onClick={() => handleAddChild(node.id)}
                       className="rounded px-1.5 py-0.5 text-[10px] text-gray-400 transition-colors hover:bg-gray-200"

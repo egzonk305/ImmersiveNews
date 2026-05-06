@@ -47,7 +47,10 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState('pending')
+  const [statusFilter, setStatusFilter] = useState(() => {
+    if (typeof window === 'undefined') return 'pending'
+    return new URLSearchParams(window.location.search).get('status') ?? 'pending'
+  })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [page, setPage] = useState(1)

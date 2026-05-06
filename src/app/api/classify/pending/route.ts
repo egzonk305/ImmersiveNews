@@ -13,11 +13,19 @@ export async function POST(request: NextRequest) {
   try {
     const body = bodySchema.parse(await request.json().catch(() => ({})))
     const supabase = await createClient()
+    const startTs = Date.now()
     const results = await classifyAllPendingWithPath(supabase, body.limit)
-    const ok = results.filter(r => r.status === 'success').length
+    const elapsedMs = Date.now() - startTs
+    const succeeded = results.filter(r => r.status === 'success').length
     const failed = results.filter(r => r.status !== 'success').length
+    const processed = results.length
     return NextResponse.json({
-      data: { total: results.length, success: ok, failed, results },
+      processed,
+      succeeded,
+      failed,
+      skipped: 0,
+      elapsedMs,
+      avgMsPerItem: processed > 0 ? Math.round(elapsedMs / processed) : 0,
     })
   } catch (error) {
     return NextResponse.json({ error: formatError(error) }, { status: 500 })

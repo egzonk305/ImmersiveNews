@@ -47,6 +47,8 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
 
   const onSubmit = async (data: EditInput) => {
     setServerError(null)
+    // Leerer String aus dem Select bedeutet Root-Ebene → null
+    if (data.parent_id === '') data.parent_id = null
     try {
       // Name + Description (Patch)
       const patch: Record<string, unknown> = {}
@@ -68,7 +70,7 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
       }
 
       // Verschieben (nicht für Root-Topics)
-      if (!isFixedRoot && data.parent_id !== topic.parent_id && data.parent_id) {
+      if (!isFixedRoot && data.parent_id !== topic.parent_id && data.parent_id !== undefined) {
         const res = await fetch(`/api/topics/${topic.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -227,7 +229,7 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
 
           <p className="text-sm text-gray-600">
             Das Löschen dieses Topics kann nicht rückgängig gemacht werden.
-            {topic.level < 5 && ' Alle untergeordneten Einträge werden ebenfalls gelöscht.'}
+            {topic.level < 8 && ' Alle untergeordneten Einträge werden ebenfalls gelöscht.'}
           </p>
 
           {showDeleteConfirm ? (

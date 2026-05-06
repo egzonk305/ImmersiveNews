@@ -22,18 +22,13 @@ export default async function TopicDetailPage({
 
   const { topic, children, ancestors } = detail
 
-  const { data: articles } = await supabase
-    .from('incoming_item_topics')
-    .select('incoming_items:incoming_item_id(id, title, description, source_url, published_at)')
-    .eq('topic_id', id)
-    .eq('is_primary', true)
+  const { data: approvedArticles } = await supabase
+    .from('incoming_items')
+    .select('id, title, description, ai_headline, ai_description, ai_summary_short, source_url, published_at, status')
+    .eq('target_topic_id', id)
     .neq('status', 'rejected')
-    .order('incoming_item_id', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(20)
-
-  const approvedArticles = (articles ?? [])
-    .map(r => r.incoming_items)
-    .filter((item): item is NonNullable<typeof item> => item !== null)
 
   return (
     <div>
@@ -85,7 +80,7 @@ export default async function TopicDetailPage({
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <p className="text-xs text-gray-400 mb-1">Artikel</p>
-          <p className="text-gray-800 font-medium">{approvedArticles.length}</p>
+          <p className="text-gray-800 font-medium">{approvedArticles?.length ?? 0}</p>
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <p className="text-xs text-gray-400 mb-1">ID</p>
@@ -103,37 +98,36 @@ export default async function TopicDetailPage({
       <div className="mb-6 rounded-lg border border-gray-200 bg-white">
         <div className="border-b border-gray-100 px-5 py-3 flex items-center justify-between">
           <h2 className="text-sm font-medium text-gray-700">
-            📰 Artikel in diesem Thema {approvedArticles.length > 0 && `(${approvedArticles.length})`}
+            📰 Artikel in diesem Thema {(approvedArticles?.length ?? 0) > 0 && `(${approvedArticles?.length})`}
           </h2>
           <Link href="/review" className="text-xs text-blue-600 hover:underline">
             Review-Queue →
           </Link>
         </div>
-        {approvedArticles.length > 0 ? (
+        {(approvedArticles?.length ?? 0) > 0 ? (
           <ul className="divide-y divide-gray-100">
-            {approvedArticles.map((item) => {
-              const a = item as unknown as { id: string; title: string; description?: string | null; source_url?: string | null; published_at?: string | null }
-              return (
-                <li key={a.id} className="px-5 py-3 hover:bg-gray-50/50 transition-colors">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-800">{a.title}</p>
-                      {a.description && (
-                        <p className="mt-1 text-xs text-gray-600 line-clamp-2">{a.description}</p>
-                      )}
-                      {a.published_at && (
-                        <p className="mt-1 text-[11px] text-gray-400">{formatDate(a.published_at)}</p>
-                      )}
-                    </div>
-                    {a.source_url && (
-                      <a href={a.source_url} target="_blank" rel="noreferrer" className="shrink-0 rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-600 hover:bg-white hover:text-blue-600">
-                        Quelle ↗
-                      </a>
+            {(approvedArticles ?? []).map((a) => (
+              <li key={a.id} className="px-5 py-3 hover:bg-gray-50/50 transition-colors">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-800">{a.ai_headline ?? a.title}</p>
+                    {a.ai_summary_short ? (
+                      <p className="mt-1 text-xs text-gray-600 line-clamp-2">{a.ai_summary_short}</p>
+                    ) : a.description ? (
+                      <p className="mt-1 text-xs text-gray-600 line-clamp-2">{a.description}</p>
+                    ) : null}
+                    {a.published_at && (
+                      <p className="mt-1 text-[11px] text-gray-400">{formatDate(a.published_at)}</p>
                     )}
                   </div>
-                </li>
-              )
-            })}
+                  {a.source_url && (
+                    <a href={a.source_url} target="_blank" rel="noreferrer" className="shrink-0 rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-600 hover:bg-white hover:text-blue-600">
+                      Quelle ↗
+                    </a>
+                  )}
+                </div>
+              </li>
+            ))}
           </ul>
         ) : (
           <div className="px-5 py-10 text-center">
