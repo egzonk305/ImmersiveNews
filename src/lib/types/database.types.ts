@@ -35,6 +35,16 @@ export interface Database {
           proposed_by_llm: boolean
           proposed_from_item_id: string | null
           merged_into_topic_id: string | null
+          canonical_name: string | null
+          slug: string | null
+          topic_type: string | null
+          aliases: string[]
+          auto_created: boolean
+          last_seen_at: string | null
+          usage_count: number
+          confidence: number | null
+          source: string | null
+          metadata: Json | null
           created_at: string
           updated_at: string
         }
@@ -49,6 +59,16 @@ export interface Database {
           proposed_by_llm?: boolean
           proposed_from_item_id?: string | null
           merged_into_topic_id?: string | null
+          canonical_name?: string | null
+          slug?: string | null
+          topic_type?: string | null
+          aliases?: string[]
+          auto_created?: boolean
+          last_seen_at?: string | null
+          usage_count?: number
+          confidence?: number | null
+          source?: string | null
+          metadata?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -63,6 +83,16 @@ export interface Database {
           proposed_by_llm?: boolean
           proposed_from_item_id?: string | null
           merged_into_topic_id?: string | null
+          canonical_name?: string | null
+          slug?: string | null
+          topic_type?: string | null
+          aliases?: string[]
+          auto_created?: boolean
+          last_seen_at?: string | null
+          usage_count?: number
+          confidence?: number | null
+          source?: string | null
+          metadata?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -151,6 +181,15 @@ export interface Database {
           enriched_at: string | null
           last_updated_from_source_at: string | null
           content_hash: string | null
+          ai_headline: string | null
+          ai_description: string | null
+          ai_summary_short: string | null
+          story_key: string | null
+          story_id: string | null
+          latest_in_story: boolean
+          ai_entities: Json | null
+          ai_paths: Json | null
+          processed_at: string | null
           created_at: string
           updated_at: string
         }
@@ -178,6 +217,15 @@ export interface Database {
           enriched_at?: string | null
           last_updated_from_source_at?: string | null
           content_hash?: string | null
+          ai_headline?: string | null
+          ai_description?: string | null
+          ai_summary_short?: string | null
+          story_key?: string | null
+          story_id?: string | null
+          latest_in_story?: boolean
+          ai_entities?: Json | null
+          ai_paths?: Json | null
+          processed_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -205,6 +253,15 @@ export interface Database {
           enriched_at?: string | null
           last_updated_from_source_at?: string | null
           content_hash?: string | null
+          ai_headline?: string | null
+          ai_description?: string | null
+          ai_summary_short?: string | null
+          story_key?: string | null
+          story_id?: string | null
+          latest_in_story?: boolean
+          ai_entities?: Json | null
+          ai_paths?: Json | null
+          processed_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -309,6 +366,63 @@ export interface Database {
           id?: string
           hash?: string
           content?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      news_stories: {
+        Row: {
+          id: string
+          story_key: string
+          root_topic: string
+          title: string
+          current_summary: string | null
+          latest_item_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          story_key: string
+          root_topic: string
+          title: string
+          current_summary?: string | null
+          latest_item_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          story_key?: string
+          root_topic?: string
+          title?: string
+          current_summary?: string | null
+          latest_item_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      story_items: {
+        Row: {
+          id: string
+          story_id: string
+          incoming_item_id: string
+          relation: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          story_id: string
+          incoming_item_id: string
+          relation?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          story_id?: string
+          incoming_item_id?: string
+          relation?: string
           created_at?: string
         }
         Relationships: []
@@ -482,8 +596,23 @@ export interface Database {
           is_fixed_root: boolean
           topic_status: TopicStatus
           proposed_by_llm: boolean
+          canonical_name: string | null
+          slug: string | null
+          topic_type: string | null
+          auto_created: boolean
+          last_seen_at: string | null
+          usage_count: number
           path_array: string[]
           full_path: string
+        }
+      }
+      topic_paths_view: {
+        Row: {
+          topic_id: string
+          path_names: string[]
+          path_ids: string[]
+          depth: number
+          root_topic: string
         }
       }
       dashboard_stats: {
@@ -500,6 +629,9 @@ export interface Database {
           fresh_items: number
           archived_items: number
           suggested_topics_count: number
+          auto_created_topics: number
+          story_count: number
+          avg_processing_ms: number | null
         }
       }
       items_per_root: {
@@ -553,6 +685,16 @@ export interface Database {
       get_topic_ancestors: {
         Args: { topic_id: string }
         Returns: { id: string; name: string; level: number }[]
+      }
+      get_topic_path: {
+        Args: { topic_id: string }
+        Returns: {
+          topic_id: string
+          path_names: string[]
+          path_ids: string[]
+          depth: number
+          root_topic: string
+        }[]
       }
       get_allowed_topics: {
         Args: Record<string, never>
@@ -618,6 +760,10 @@ export type ClassificationRun = Database['public']['Tables']['classification_run
 export type ClassificationRunInsert = Database['public']['Tables']['classification_runs']['Insert']
 
 export type ClassifierPrompt = Database['public']['Tables']['classifier_prompts']['Row']
+export type NewsStory = Database['public']['Tables']['news_stories']['Row']
+export type NewsStoryInsert = Database['public']['Tables']['news_stories']['Insert']
+export type StoryItem = Database['public']['Tables']['story_items']['Row']
+export type StoryItemInsert = Database['public']['Tables']['story_items']['Insert']
 
 export type ClassifierSettings = Database['public']['Tables']['classifier_settings']['Row']
 export type ClassifierSettingsUpdate = Database['public']['Tables']['classifier_settings']['Update']
@@ -629,6 +775,7 @@ export type EnrichmentCache = Database['public']['Tables']['enrichment_cache']['
 export type EnrichmentCacheInsert = Database['public']['Tables']['enrichment_cache']['Insert']
 
 export type TopicWithPath = Database['public']['Views']['topics_with_path']['Row']
+export type TopicPath = Database['public']['Views']['topic_paths_view']['Row']
 export type DashboardStats = Database['public']['Views']['dashboard_stats']['Row']
 export type ItemsPerRoot = Database['public']['Views']['items_per_root']['Row']
 export type LowConfidenceItem = Database['public']['Views']['low_confidence_items']['Row']

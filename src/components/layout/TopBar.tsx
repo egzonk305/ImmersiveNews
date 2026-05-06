@@ -33,20 +33,34 @@ export function TopBar() {
   const crumbs = buildBreadcrumbs(pathname)
 
   return (
-    <header className="h-14 bg-white border-b border-gray-200 px-6 flex items-center justify-between flex-shrink-0">
-      <nav className="flex items-center gap-1.5 text-sm text-gray-500 min-w-0">
+    <header
+      className="h-14 px-6 flex items-center justify-between flex-shrink-0"
+      style={{
+        background: 'rgba(255,255,255,0.50)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        borderBottom: '1px solid rgba(255,255,255,0.60)',
+        boxShadow: '0 1px 16px rgba(99,102,241,0.05)',
+      }}
+    >
+      <nav className="flex items-center gap-1.5 text-sm min-w-0">
         {crumbs.length === 0 ? (
-          <span className="text-gray-400">—</span>
+          <span className="text-slate-400">—</span>
         ) : (
           crumbs.map((c, i) => {
             const last = i === crumbs.length - 1
             return (
               <span key={c.href} className="flex items-center gap-1.5 min-w-0">
-                {i > 0 && <span className="text-gray-300">/</span>}
+                {i > 0 && (
+                  <span className="text-violet-200 font-light select-none">/</span>
+                )}
                 {last ? (
-                  <span className="text-gray-800 font-medium truncate">{c.label}</span>
+                  <span className="font-semibold text-slate-700 truncate">{c.label}</span>
                 ) : (
-                  <Link href={c.href} className="hover:text-gray-700 transition-colors truncate">
+                  <Link
+                    href={c.href}
+                    className="text-slate-400 hover:text-violet-600 transition-colors truncate"
+                  >
                     {c.label}
                   </Link>
                 )}
@@ -55,12 +69,22 @@ export function TopBar() {
           })
         )}
       </nav>
-      <div className="flex items-center gap-3 flex-shrink-0">
-        <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-gray-500">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+
+      <div className="flex items-center gap-2.5 flex-shrink-0">
+        <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-400">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+          </span>
           DB verbunden
         </span>
-        <span className="text-xs font-medium text-gray-600 px-2 py-1 rounded bg-gray-100">
+        <span
+          className="text-xs font-semibold px-2.5 py-1 rounded-full text-violet-700"
+          style={{
+            background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.10) 60%, rgba(236,72,153,0.08) 100%)',
+            boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.20)',
+          }}
+        >
           Admin
         </span>
       </div>

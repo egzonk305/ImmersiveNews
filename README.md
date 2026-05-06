@@ -2,6 +2,8 @@
 
 Next.js 15 Admin-Oberfläche für RSS-Feed-Verwaltung, Topic-Management und lokale KI-Klassifizierung mit Ollama/Qwen.
 
+Die dynamische RSS-/News-Pfadgenerierung ist in [docs/dynamic-news-paths.md](docs/dynamic-news-paths.md) dokumentiert. Sie nutzt weiterhin Supabase-Migrationen und die vorhandenen `topics`, `incoming_items` und `incoming_item_topics`.
+
 ---
 
 ## Architektur

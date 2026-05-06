@@ -125,7 +125,7 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
   return (
     <div className="space-y-6">
       {/* Bearbeiten-Formular */}
-      <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg border border-gray-200 p-6 space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="glass-card rounded-xl p-6 space-y-5">
         <h2 className="text-sm font-medium text-gray-700 border-b border-gray-100 pb-3">
           Eigenschaften bearbeiten
         </h2>
@@ -222,7 +222,7 @@ export function TopicEditForm({ topic, possibleParents }: TopicEditFormProps) {
 
       {/* Gefahrenzone */}
       {!isFixedRoot && (
-        <div className="bg-white rounded-lg border border-red-200 p-6 space-y-4">
+        <div className="glass-card rounded-xl border-red-200/60 bg-red-50/20 p-6 space-y-4">
           <h2 className="text-sm font-medium text-red-700 border-b border-red-100 pb-3">
             Gefahrenzone
           </h2>

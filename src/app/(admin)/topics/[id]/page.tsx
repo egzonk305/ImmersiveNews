@@ -55,13 +55,13 @@ export default async function TopicDetailPage({
           <>
             <Link
               href={`/topics/new?parent_id=${topic.id}`}
-              className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              className="btn-primary inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs"
             >
               ＋ Unterthema
             </Link>
             <Link
               href={`/topics/${topic.id}/edit`}
-              className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-1 rounded-xl glass-card px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 transition-colors"
             >
               ✎ Bearbeiten
             </Link>
@@ -70,26 +70,26 @@ export default async function TopicDetailPage({
       />
 
       <div className="mb-6 grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-xl glass-card p-4">
           <p className="text-xs text-gray-400 mb-1">Ebene</p>
           <p className="text-gray-800 font-medium">{levelLabel(topic.level)}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-xl glass-card p-4">
           <p className="text-xs text-gray-400 mb-1">Unterthemen</p>
           <p className="text-gray-800 font-medium">{children.length}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-xl glass-card p-4">
           <p className="text-xs text-gray-400 mb-1">Artikel</p>
           <p className="text-gray-800 font-medium">{approvedArticles?.length ?? 0}</p>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className="rounded-xl glass-card p-4">
           <p className="text-xs text-gray-400 mb-1">ID</p>
           <p className="truncate font-mono text-xs text-gray-500" title={topic.id}>{topic.id.slice(0, 8)}…</p>
         </div>
       </div>
 
       {topic.description && (
-        <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50/40 p-4 text-sm text-gray-700">
+        <div className="mb-6 rounded-xl glass-card border-blue-100/60 bg-blue-50/30 p-4 text-sm text-gray-700">
           <p className="mb-1 text-xs uppercase tracking-wide text-blue-700">Themen-Beschreibung</p>
           <p className="whitespace-pre-wrap">{topic.description}</p>
         </div>
@@ -141,7 +141,7 @@ export default async function TopicDetailPage({
       </div>
 
       {children.length > 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white">
+        <div className="rounded-xl glass-card overflow-hidden">
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
             <h2 className="text-sm font-medium text-gray-700">
               Untergeordnete Einträge ({children.length})
@@ -177,7 +177,7 @@ export default async function TopicDetailPage({
           </ul>
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-gray-200 bg-white p-10 text-center">
+        <div className="rounded-xl glass-card p-10 text-center">
           <p className="mb-3 text-sm text-gray-400">Noch keine Untereinträge vorhanden</p>
           <Link
             href={`/topics/new?parent_id=${topic.id}`}

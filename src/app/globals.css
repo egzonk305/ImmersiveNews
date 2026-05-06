@@ -4,21 +4,83 @@
 
 @layer base {
   :root {
-    --background: #ffffff;
+    --background: #f0f4ff;
     --foreground: #0f172a;
-    --border: #e5e7eb;
+    --border: #e0e7ff;
+
+    /* Sky gradient stops */
+    --sky-start: #dbeafe;   /* blue-100 */
+    --sky-mid:   #ede9fe;   /* violet-100 */
+    --sky-end:   #fce7f3;   /* pink-100 */
   }
 
-  * {
-    border-color: var(--border);
-  }
-
-  html {
-    background-color: var(--background);
-  }
-
-  body {
-    background-color: var(--background);
+  html, body {
+    background: linear-gradient(135deg, var(--sky-start) 0%, var(--sky-mid) 50%, var(--sky-end) 100%);
+    background-attachment: fixed;
     color: var(--foreground);
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  /* Glass surface */
+  .glass {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+  }
+
+  .glass-sm {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+  }
+
+  /* Standard content card */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow: 0 2px 12px rgba(99, 102, 241, 0.05), 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.80);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.08), 0 1px 4px rgba(0,0,0,0.05);
+  }
+
+  /* Primary gradient button */
+  .btn-primary {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #ec4899 100%);
+    color: white;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.30), 0 1px 2px rgba(0,0,0,0.08);
+    transition: all 0.15s ease;
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 55%, #db2777 100%);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.40), 0 1px 3px rgba(0,0,0,0.10);
+    transform: translateY(-0.5px);
+  }
+  .btn-primary:disabled {
+    opacity: 0.55;
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Gradient border shimmer */
+  .border-gradient {
+    border-image: linear-gradient(135deg, #93c5fd, #c4b5fd, #f9a8d4) 1;
   }
 }

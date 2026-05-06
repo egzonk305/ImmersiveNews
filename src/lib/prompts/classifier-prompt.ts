@@ -31,21 +31,21 @@ export function buildClassifierPrompt(opts: BuildPromptOptions): PromptResult {
   const content = opts.item.content ? opts.item.content.slice(0, 800) : null
 
   const artikelBlock = [
-    `Titel: ${opts.item.title}`,
-    `Beschreibung: ${description || '(keine)'}`,
-    content ? `Volltext (Auszug): ${content}` : null,
+    `Title: ${opts.item.title}`,
+    `Description: ${description || '(none)'}`,
+    content ? `Text excerpt: ${content}` : null,
   ].filter(Boolean).join('\n')
 
-  const prompt = `Klassifiziere den Artikel. Wähle maximal ${opts.maxCandidates} Themen-Nummern aus der Liste. Genau einer hat is_primary:true.
+  const prompt = `Classify the article. Choose at most ${opts.maxCandidates} topics. Exactly one must have is_primary:true.
 
-THEMEN:
+TOPICS:
 ${topicsList}
 
-ARTIKEL:
+ARTICLE:
 ${artikelBlock}
 
-Antworte NUR mit diesem JSON-Objekt, keine Erklärung, kein Markdown:
-{"candidates":[{"n":NUMMER,"confidence":0.0-1.0,"is_primary":true/false}]}`
+Reply only with JSON, no markdown:
+{"candidates":[{"n":1,"confidence":0.85,"is_primary":true}]}`
 
   return { prompt, indexMap }
 }

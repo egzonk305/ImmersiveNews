@@ -21,6 +21,9 @@ export function levelLabel(level: number): string {
     3: 'Unterbereich',
     4: 'Thema',
     5: 'Eintrag / Frage',
+    6: 'Story',
+    7: 'Detail',
+    8: 'Artikel-Kontext',
   }
   return labels[level] ?? `Level ${level}`
 }

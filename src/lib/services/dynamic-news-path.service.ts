@@ -561,7 +561,7 @@ export async function applyNewsPathResult(
   for (let i = 0; i < normalizedPaths.length; i++) {
     const entry = normalizedPaths[i]
     let parent = root
-    const segments = entry.path.slice(1, -1).slice(0, 7)
+    const segments = entry.path.slice(1).slice(0, 7)
     const pathSoFar = [root.name]
 
     for (const segment of segments) {

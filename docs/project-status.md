@@ -68,9 +68,10 @@
 
 ### Review-Flow
 - Review-Queue (`/review`), klassifizierte Items anzeigen, Bulk-Approve
-- Klassifizierter Topic-Pfad (Blatt-Name) in Detailansicht sichtbar
+- Review-API joined `topics!target_topic_id(id, name)` → Blatt-Topic-Name direkt in der Detailansicht sichtbar
 - Manuelles Topic-Assignment via TopicPicker
 - Enrichment-Status in Detailansicht, Fortschrittsbalken bei Batch-Klassifizierung
+- Verifikation 2026-05-06: Artikel "Rui Pinto / Football Leaks" korrekt als `Politik › Recht › Whistleblower › Korruption` klassifiziert, alle 3 Zwischenknoten auto-created
 
 ### Admin-UI
 - Dashboard, KI-Logs, Schema-Viewer, Import/Export
@@ -167,6 +168,7 @@ UPDATE classifier_settings SET
 | `src/lib/validators/classifier.schema.ts` | Zod-Schemas inkl. `pathClassificationSchema` |
 | `src/lib/types/database.types.ts` | Alle DB-Typen (manuell gepflegt) |
 | `src/app/(admin)/review/page.tsx` | Review-Queue (Client Component) |
+| `src/app/api/review/route.ts` | Review-API mit `topics!target_topic_id` FK-Join |
 | `src/app/(admin)/cleanup/page.tsx` | Cleanup-Dashboard |
 | `src/app/api/cron/fetch-feeds/route.ts` | RSS-Cron-Trigger |
 | `src/app/api/cron/lifecycle/route.ts` | Lifecycle-Cron-Trigger |

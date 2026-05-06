@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         .limit(1)
         .single()
       baseUrl = baseUrl ?? settings?.ollama_base_url ?? 'http://localhost:11434'
-      modelName = modelName ?? settings?.model_name ?? 'qwen3:8b'
+      modelName = modelName ?? settings?.model_name ?? 'gemma4:latest'
     }
 
     const models = await listModels(baseUrl)

@@ -256,12 +256,12 @@ export default function ClassifierSettingsPage() {
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Max. Tiefe (1–5)
+                Max. Tiefe (1–8)
               </label>
               <input
                 type="number"
                 min={1}
-                max={5}
+                max={8}
                 value={settings.max_depth}
                 onChange={e => update({ max_depth: parseInt(e.target.value, 10) })}
                 className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"

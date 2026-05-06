@@ -284,7 +284,7 @@ export function TopicTreeBrowser({ roots }: TopicTreeBrowserProps) {
 
           <div
             className={cn(
-              'group relative flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-gray-50',
+              'group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-all hover:bg-white/60',
               isRenaming && 'bg-blue-50'
             )}
             style={{ paddingLeft: `${depth * 20 + 8}px` }}

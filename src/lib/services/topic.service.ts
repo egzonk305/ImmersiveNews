@@ -74,7 +74,7 @@ export async function getLeafTopics(supabase: Supabase, options?: {
     }
   }
 
-  const all = await db.getTopicsByLevel(supabase, 5)
+  const all = await db.getTopicsByLevel(supabase, 8)
   const start = (page - 1) * pageSize
   return {
     data: all.slice(start, start + pageSize),
@@ -95,8 +95,8 @@ export async function createTopic(
     const parent = await db.getTopicById(supabase, input.parent_id)
     level = parent.level + 1
 
-    if (level > 5) {
-      throw new Error('Maximale Tiefe (5 Ebenen) erreicht')
+    if (level > 8) {
+      throw new Error('Maximale Tiefe (8 Ebenen) erreicht')
     }
   }
 
@@ -185,7 +185,7 @@ export async function moveTopic(
   const newParent = await db.getTopicById(supabase, newParentId)
   const newLevel = newParent.level + 1
 
-  if (newLevel > 5) {
+  if (newLevel > 8) {
     throw new Error('Ziel-Ebene würde Maximumtiefe überschreiten')
   }
 
@@ -225,7 +225,7 @@ export async function getDuplicates(supabase: Supabase) {
 
 export async function getTreeStats(supabase: Supabase) {
   const levels = await Promise.all(
-    [1, 2, 3, 4, 5].map(async (level) => {
+    [1, 2, 3, 4, 5, 6, 7, 8].map(async (level) => {
       const topics = await db.getTopicsByLevel(supabase, level)
       return { level, count: topics.length }
     })

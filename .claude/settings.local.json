@@ -13,7 +13,23 @@
       "PowerShell(cd \"C:\\\\Users\\\\egzon\\\\Documents\\\\ImmersiveNews\"; npx tsc --noEmit 2>&1; Write-Host \"TS Exit: $LASTEXITCODE\")",
       "PowerShell(cd \"C:\\\\Users\\\\egzon\\\\Documents\\\\ImmersiveNews\"; npx tsc --noEmit 2>&1; Write-Host \"TS: $LASTEXITCODE\")",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\egzon\\\\Documents\\\\ImmersiveNews\" -Force)",
-      "Bash(Select-Object Name, PSIsContainer)"
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(ollama list *)",
+      "Bash(curl *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\egzon\\\\Documents\\\\ImmersiveNews\\\\src\\\\app\" -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(powershell -Command \"'{0:N2} MB' -f \\(\\(Get-ChildItem -Path 'C:\\\\Users\\\\egzon\\\\Documents\\\\ImmersiveNews\\\\src' -Recurse | Measure-Object -Property Length -Sum\\).Sum / 1MB\\)\")",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__list_migrations",
+      "mcp__plugin_supabase_supabase__get_advisors",
+      "mcp__plugin_supabase_supabase__execute_sql",
+      "Bash(Get-ChildItem \"C:\\\\Users\\\\egzon\\\\Documents\\\\ImmersiveNews\\\\docs\\\\superpowers\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(Remove-Item *)",
+      "Bash(Get-ChildItem *)",
+      "Bash(git push *)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)"
     ]
   }
 }

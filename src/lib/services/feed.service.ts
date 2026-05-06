@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database, Json, RssFeed } from '@/lib/types/database.types'
+import { buildContentHash } from '@/lib/services/dynamic-news-path.service'
+import { quickRootSort } from '@/lib/services/classifier.service'
 
 export interface ParsedRssItem {
   title: string
@@ -168,18 +170,58 @@ export async function fetchFeed(
   if (urls.length > 0) {
     const { data: existing } = await supabase
       .from('incoming_items')
-      .select('source_url')
+      .select('id, source_url, description, content')
       .in('source_url', urls)
     existing?.forEach(e => {
       if (e.source_url) existingUrls.add(e.source_url)
     })
+
+    for (const item of rssItems) {
+      if (!item.link || !existingUrls.has(item.link)) continue
+      const existingItem = existing?.find(e => e.source_url === item.link)
+      if (!existingItem) continue
+      if ((!existingItem.description && item.description) || (!existingItem.content && item.content)) {
+        await supabase
+          .from('incoming_items')
+          .update({
+            description: existingItem.description ?? item.description,
+            content: existingItem.content ?? item.content,
+            last_updated_from_source_at: new Date().toISOString(),
+          })
+          .eq('id', existingItem.id)
+      }
+    }
   }
 
-  const newItems = rssItems.filter(item => !item.link || !existingUrls.has(item.link))
+  const candidates = rssItems.map(item => ({
+    item,
+    content_hash: buildContentHash({
+      title: item.title,
+      description: item.description,
+      content: item.content,
+      source_url: item.link,
+    }),
+  }))
+
+  const existingHashes = new Set<string>()
+  const hashes = candidates.map(candidate => candidate.content_hash)
+  if (hashes.length > 0) {
+    const { data: existingByHash } = await supabase
+      .from('incoming_items')
+      .select('content_hash')
+      .in('content_hash', hashes)
+    existingByHash?.forEach(row => {
+      if (row.content_hash) existingHashes.add(row.content_hash)
+    })
+  }
+
+  const newItems = candidates.filter(({ item, content_hash }) =>
+    (!item.link || !existingUrls.has(item.link)) && !existingHashes.has(content_hash)
+  )
 
   let inserted = 0
   if (newItems.length > 0) {
-    const rows = newItems.map(item => ({
+    const rows = newItems.map(({ item, content_hash }) => ({
       title: item.title,
       description: item.description,
       content: item.content,
@@ -189,6 +231,7 @@ export async function fetchFeed(
       source_url: item.link,
       published_at: parsePubDate(item.pubDate),
       raw_data: item as unknown as Json,
+      content_hash,
       status: 'pending' as const,
       processing_state: 'pending' as const,
     }))
@@ -218,6 +261,10 @@ export async function fetchFeed(
       }
     }
     inserted = ins?.length ?? 0
+
+    if (ins && ins.length > 0) {
+      void quickRootSort(supabase, ins.map(i => i.id), feed.root_topic_id ?? null)
+    }
   }
 
   await supabase

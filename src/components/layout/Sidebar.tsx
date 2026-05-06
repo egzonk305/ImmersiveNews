@@ -70,22 +70,36 @@ export function Sidebar() {
   }, [])
 
   return (
-    <aside className="w-60 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
-      <div className="h-14 px-5 flex items-center border-b border-gray-100">
-        <Link href="/dashboard" className="flex items-center gap-2 group">
-          <span className="w-7 h-7 rounded-md bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold">
+    <aside
+      className="w-60 flex flex-col flex-shrink-0 relative"
+      style={{
+        background: 'rgba(255,255,255,0.60)',
+        backdropFilter: 'blur(24px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+        borderRight: '1px solid rgba(255,255,255,0.70)',
+        boxShadow: '1px 0 24px rgba(99,102,241,0.06)',
+      }}
+    >
+      {/* Logo */}
+      <div className="h-14 px-5 flex items-center" style={{ borderBottom: '1px solid rgba(255,255,255,0.55)' }}>
+        <Link href="/dashboard" className="flex items-center gap-2.5 group">
+          <span
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shadow-md"
+            style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 55%, #ec4899 100%)' }}
+          >
             IN
           </span>
-          <span className="font-medium text-gray-900 text-sm group-hover:text-blue-600 transition-colors">
+          <span className="font-semibold text-slate-700 text-sm group-hover:text-violet-600 transition-colors">
             ImmersiveNews
           </span>
         </Link>
       </div>
 
-      <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        {navGroups.map((group, gi) => (
-          <div key={group.label} className={cn(gi > 0 && 'mt-5')}>
-            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+      {/* Nav */}
+      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-5">
+        {navGroups.map((group) => (
+          <div key={group.label}>
+            <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-violet-400/80">
               {group.label}
             </p>
             <div className="space-y-0.5">
@@ -96,22 +110,45 @@ export function Sidebar() {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors relative',
+                      'flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150 relative',
                       isActive
-                        ? 'bg-blue-50 text-blue-700 font-medium'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        ? 'text-violet-700 font-medium shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
                     )}
+                    style={isActive ? {
+                      background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, rgba(139,92,246,0.10) 60%, rgba(236,72,153,0.07) 100%)',
+                      boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.18), 0 1px 3px rgba(99,102,241,0.08)',
+                    } : {}}
+                    onMouseEnter={e => {
+                      if (!isActive) {
+                        (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.50)'
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isActive) {
+                        (e.currentTarget as HTMLElement).style.background = ''
+                      }
+                    }}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-600 rounded-r" />
+                      <span
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full"
+                        style={{ background: 'linear-gradient(180deg, #6366f1, #ec4899)' }}
+                      />
                     )}
-                    <span className="w-4 text-center opacity-70">{item.icon}</span>
+                    <span className={cn('w-4 text-center text-base leading-none', isActive ? 'opacity-90' : 'opacity-50')}>
+                      {item.icon}
+                    </span>
                     <span className="flex-1">{item.label}</span>
                     {item.badge && pendingCount > 0 && (
-                      <span className={cn(
-                        'inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full text-[10px] font-medium px-1.5',
-                        isActive ? 'bg-blue-600 text-white' : 'bg-amber-500 text-white'
-                      )}>
+                      <span
+                        className="inline-flex items-center justify-center min-w-[20px] h-5 rounded-full text-[10px] font-semibold px-1.5 text-white"
+                        style={{
+                          background: isActive
+                            ? 'linear-gradient(135deg, #6366f1, #ec4899)'
+                            : 'linear-gradient(135deg, #f59e0b, #f97316)',
+                        }}
+                      >
                         {pendingCount > 99 ? '99+' : pendingCount}
                       </span>
                     )}
@@ -123,10 +160,17 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
-        <p className="text-xs text-gray-400">v0.2.0</p>
-        <span className="inline-flex items-center gap-1 text-[10px] text-gray-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+      {/* Footer */}
+      <div
+        className="px-5 py-3 flex items-center justify-between"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.55)' }}
+      >
+        <p className="text-xs text-slate-400">v0.2.0</p>
+        <span className="inline-flex items-center gap-1.5 text-[10px] text-slate-400">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
           Online
         </span>
       </div>

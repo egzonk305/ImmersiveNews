@@ -11,7 +11,7 @@ type TopicTreeNode = Topic & {
 
 // GET /api/topics/tree
 // Ohne depth: flache Liste mit full_path fuer TopicPicker und Klassifizierer.
-// Mit depth=1..5: verschachtelte aktive Topic-Struktur bis zur gewuenschten Tiefe.
+// Mit depth=1..8: verschachtelte aktive Topic-Struktur bis zur gewuenschten Tiefe.
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const depthParam = searchParams.get('depth')
 
     if (depthParam !== null) {
-      const depth = Math.min(Math.max(Number(depthParam) || 1, 1), 5)
+      const depth = Math.min(Math.max(Number(depthParam) || 1, 1), 8)
       const { data: topics, error } = await supabase
         .from('topics')
         .select('*')
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
           ...topic,
           children: [],
           childCount: 0,
-          isLeaf: topic.level >= 5,
+          isLeaf: topic.level >= 8,
         })
       }
 
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
         for (const node of nodes.values()) {
           const childCount = countMap.get(node.id) ?? 0
           node.childCount = childCount
-          node.isLeaf = node.level >= 5 || childCount === 0
+          node.isLeaf = node.level >= 8 || childCount === 0
         }
       }
 

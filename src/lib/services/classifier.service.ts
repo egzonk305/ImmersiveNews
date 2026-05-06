@@ -435,6 +435,66 @@ export async function classifyAllPending(
   return classifyBatch(supabase, items.map(i => i.id))
 }
 
+export async function quickRootSort(
+  supabase: SupabaseClient<Database>,
+  itemIds: string[],
+  feedRootTopicId: string | null
+): Promise<void> {
+  if (itemIds.length === 0) return
+
+  // Fast path: feed hat bereits ein Root-Thema konfiguriert
+  if (feedRootTopicId) {
+    await supabase
+      .from('incoming_items')
+      .update({ target_topic_id: feedRootTopicId })
+      .in('id', itemIds)
+    return
+  }
+
+  // LLM-Pfad: schnelle Stage-1-Klassifikation nur auf Root-Themen
+  let settings
+  try {
+    settings = await getSettings(supabase)
+  } catch {
+    return
+  }
+
+  const rootTopics = (await getAllowedTopics(supabase)).filter(t => t.level === 1)
+  if (rootTopics.length === 0) return
+
+  const { data: items } = await supabase
+    .from('incoming_items')
+    .select('id, title, description, content')
+    .in('id', itemIds)
+  if (!items || items.length === 0) return
+
+  const concurrency = 3
+  for (let i = 0; i < items.length; i += concurrency) {
+    const chunk = items.slice(i, i + concurrency)
+    await Promise.allSettled(
+      chunk.map(async item => {
+        try {
+          const result = await runStage(
+            settings,
+            { title: item.title, description: item.description ?? null, content: (item as { content?: string | null }).content ?? null },
+            rootTopics,
+            1,
+            1
+          )
+          if (result.error === null && result.candidates.length > 0) {
+            await supabase
+              .from('incoming_items')
+              .update({ target_topic_id: result.candidates[0].topic_id })
+              .eq('id', item.id)
+          }
+        } catch {
+          // best-effort, Fehler unterdrücken
+        }
+      })
+    )
+  }
+}
+
 export async function classifyParallel(
   supabase: SupabaseClient<Database>,
   itemIds: string[],

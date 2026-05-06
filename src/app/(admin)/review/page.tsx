@@ -350,7 +350,7 @@ export default function ReviewPage() {
           <button
             onClick={handleClassifyAll}
             disabled={bulkClassifying}
-            className="inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm"
+            className="btn-primary inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs"
           >
             {bulkClassifying ? (
               <>
@@ -368,7 +368,7 @@ export default function ReviewPage() {
       />
 
       {bulkClassifying && bulkProgress && (
-        <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+        <div className="mb-4 rounded-xl border border-blue-200/60 bg-blue-50/60 backdrop-blur-sm px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-blue-700 font-medium">
               Klassifiziere… {bulkProgress.current} / {bulkProgress.total}
@@ -398,19 +398,19 @@ export default function ReviewPage() {
       )}
 
       {error && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between">
+        <div className="mb-3 rounded-xl border border-red-200/60 bg-red-50/60 backdrop-blur-sm px-4 py-3 text-sm text-red-700 flex justify-between">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-red-400">✕</button>
         </div>
       )}
       {info && (
-        <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 flex justify-between">
+        <div className="mb-3 rounded-xl border border-blue-200/60 bg-blue-50/60 backdrop-blur-sm px-4 py-3 text-sm text-blue-700 flex justify-between">
           <span>{info}</span>
           <button onClick={() => setInfo(null)} className="text-blue-400">✕</button>
         </div>
       )}
       {bulkErrors.length > 0 && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+        <div className="mb-3 rounded-xl border border-red-200/60 bg-red-50/60 backdrop-blur-sm px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-red-700">{bulkErrors.length} Items fehlgeschlagen</p>
             <button onClick={() => setBulkErrors([])} className="text-red-400 text-xs">✕</button>
@@ -440,10 +440,10 @@ export default function ReviewPage() {
             <button
               key={s.key}
               onClick={() => { setStatusFilter(s.key); setPage(1) }}
-              className={`group rounded-lg border p-4 text-left transition-all bg-white ${
+              className={`group rounded-xl p-4 text-left transition-all ${
                 isActive
-                  ? 'border-blue-400 shadow-sm ring-2 ring-blue-100'
-                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                  ? 'glass-card ring-2 ring-violet-200/60'
+                  : 'glass-card opacity-80 hover:opacity-100'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -458,7 +458,7 @@ export default function ReviewPage() {
         })}
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white">
+      <div className="rounded-xl glass-card overflow-hidden">
         <div className="border-b border-gray-100 px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-medium text-gray-700">
