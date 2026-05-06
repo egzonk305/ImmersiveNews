@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { CandidateList } from '@/components/review/CandidateList'
 import { TopicPicker } from '@/components/review/TopicPicker'
-import type { IncomingItem, ProcessingState } from '@/lib/types/database.types'
+import type { IncomingItem, ProcessingState, Json } from '@/lib/types/database.types'
 
 type ReviewStats = {
   pending: number
@@ -41,6 +41,21 @@ const procStateColors: Record<ProcessingState, string> = {
   done: 'bg-green-100 text-green-700',
 }
 
+function AiPathBreadcrumb({ paths }: { paths: Json | null }) {
+  const first = Array.isArray(paths) && Array.isArray(paths[0]) ? (paths[0] as string[]) : null
+  if (!first || first.length === 0) return null
+  return (
+    <div className="mt-1.5 flex items-center gap-1 flex-wrap">
+      {first.map((seg, i) => (
+        <span key={i} className="flex items-center gap-1">
+          {i > 0 && <span className="text-purple-300 text-[10px]">›</span>}
+          <span className="rounded bg-purple-50 border border-purple-100 px-1.5 py-0.5 text-[10px] text-purple-700 font-medium">{seg}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export default function ReviewPage() {
   const [items, setItems] = useState<ItemWithFeed[]>([])
   const [stats, setStats] = useState<ReviewStats>({ pending: 0, approved: 0, rejected: 0, needs_edit: 0, total: 0 })
@@ -56,11 +71,11 @@ export default function ReviewPage() {
   const [page, setPage] = useState(1)
   const [count, setCount] = useState(0)
   const [classifyingId, setClassifyingId] = useState<string | null>(null)
+  const [classifyResults, setClassifyResults] = useState<Map<string, string[]>>(new Map())
   const [bulkClassifying, setBulkClassifying] = useState(false)
   const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; success: number; failed: number } | null>(null)
-  const [bulkLimit, setBulkLimit] = useState(200)
+  const [bulkErrors, setBulkErrors] = useState<{ id: string; title: string; error: string }[]>([])
   const bulkStopRef = useRef(false)
-  const abortControllerRef = useRef<AbortController | null>(null)
   const [pickerOpen, setPickerOpen] = useState<string | null>(null)
   const pageSize = 20
 
@@ -75,6 +90,7 @@ export default function ReviewPage() {
   const loadItems = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setClassifyResults(new Map())
     try {
       const params = new URLSearchParams({
         status: statusFilter,
@@ -129,13 +145,17 @@ export default function ReviewPage() {
       const res = await fetch(`/api/classify/${id}`, { method: 'POST' })
       const json = await res.json()
       if (res.ok) {
-        setInfo(
-          json.data.status === 'success'
-            ? `Klassifiziert: ${json.data.paths?.length ?? 0} Pfade erzeugt`
-            : json.data.status === 'skipped'
-              ? `Übersprungen: ${json.data.skipReason}`
-              : `Fehlgeschlagen: ${json.data.error}`
-        )
+        if (json.data?.status === 'success') {
+          const path: string[] = json.data?.path ?? []
+          if (path.length > 0) {
+            setClassifyResults(prev => new Map(prev).set(id, path))
+          }
+          setInfo(`Klassifiziert: ${path.join(' › ') || `${json.data.paths?.length ?? 0} Pfade erzeugt`}`)
+        } else if (json.data?.status === 'skipped') {
+          setInfo(`Übersprungen: ${json.data.skipReason}`)
+        } else {
+          setInfo(`Fehlgeschlagen: ${json.data?.error}`)
+        }
         setExpandedId(id)
         loadItems(); loadStats()
       } else {
@@ -177,46 +197,116 @@ export default function ReviewPage() {
 
   const handleClassifyAll = async () => {
     if (!confirm('Alle pending Items klassifizieren?')) return
-    setError(null); setInfo(null)
+    setError(null); setInfo(null); setBulkErrors([])
     setBulkClassifying(true)
-    setBulkProgress({ current: 0, total: 0, success: 0, failed: 0 })
     bulkStopRef.current = false
+
     try {
-      const controller = new AbortController()
-      abortControllerRef.current = controller
-      const response = await fetch('/api/classify/pending', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: bulkLimit, force: false, includeFailed: false }),
-        signal: controller.signal,
-      })
-      const json = await response.json()
-      if (!response.ok) throw new Error(json.error ?? 'Fehler bei Batch-Klassifizierung')
-      setBulkProgress({
-        current: json.processed,
-        total: json.processed,
-        success: json.succeeded,
-        failed: json.failed,
-      })
-      setInfo(
-        `${json.succeeded} erfolgreich, ${json.failed} fehlgeschlagen, ${json.skipped} übersprungen. ` +
-        `${json.elapsedMs} ms gesamt, Ø ${json.avgMsPerItem} ms/Item.`
+      const idsRes = await fetch(`/api/review?status=pending&pageSize=500&page=1`)
+      const idsJson = await idsRes.json()
+      const pendingItems: { id: string; title: string }[] = (idsJson.data ?? []).map(
+        (i: { id: string; title: string }) => ({ id: i.id, title: i.title })
       )
+      const total = pendingItems.length
+      if (total === 0) { setInfo('Keine pending Items vorhanden.'); setBulkClassifying(false); return }
+
+      setBulkProgress({ current: 0, total, success: 0, failed: 0 })
+
+      let success = 0
+      let failed = 0
+      const errors: { id: string; title: string; error: string }[] = []
+      const concurrency = 2
+
+      for (let i = 0; i < total; i += concurrency) {
+        if (bulkStopRef.current) break
+        const chunk = pendingItems.slice(i, i + concurrency)
+
+        await Promise.allSettled(
+          chunk.map(async (item) => {
+            try {
+              const res = await fetch(`/api/classify/${item.id}`, { method: 'POST' })
+              const json = await res.json()
+              if (res.ok && json.data?.status === 'success') {
+                success++
+              } else {
+                failed++
+                errors.push({ id: item.id, title: item.title, error: json.data?.error ?? json.error ?? 'Unbekannter Fehler' })
+              }
+            } catch (e) {
+              failed++
+              errors.push({ id: item.id, title: item.title, error: e instanceof Error ? e.message : 'Netzwerkfehler' })
+            }
+          })
+        )
+
+        setBulkProgress({ current: Math.min(i + concurrency, total), total, success, failed })
+      }
+
+      setBulkErrors(errors)
+      setInfo(`${success} erfolgreich, ${failed} fehlgeschlagen von ${total} Items.`)
       loadItems(); loadStats()
     } catch (e) {
-      if ((e as Error).name !== 'AbortError') {
-        setError(e instanceof Error ? e.message : 'Fehler bei Batch-Klassifizierung')
-      }
+      setError(e instanceof Error ? e.message : 'Fehler bei Batch-Klassifizierung')
     } finally {
       setBulkProgress(null)
       setBulkClassifying(false)
-      abortControllerRef.current = null
     }
+  }
+
+  const handleClassifySelected = async () => {
+    if (selected.size === 0) return
+    setError(null); setInfo(null); setBulkErrors([])
+    setBulkClassifying(true)
+    bulkStopRef.current = false
+
+    const selectedItems = items
+      .filter(i => selected.has(i.id))
+      .map(i => ({ id: i.id, title: i.title }))
+    const total = selectedItems.length
+
+    setBulkProgress({ current: 0, total, success: 0, failed: 0 })
+
+    let success = 0
+    let failed = 0
+    const errors: { id: string; title: string; error: string }[] = []
+    const concurrency = 2
+
+    for (let i = 0; i < total; i += concurrency) {
+      if (bulkStopRef.current) break
+      const chunk = selectedItems.slice(i, i + concurrency)
+
+      await Promise.allSettled(
+        chunk.map(async (item) => {
+          try {
+            const res = await fetch(`/api/classify/${item.id}`, { method: 'POST' })
+            const json = await res.json()
+            if (res.ok && json.data?.status === 'success') {
+              success++
+            } else {
+              failed++
+              errors.push({ id: item.id, title: item.title, error: json.data?.error ?? json.error ?? 'Unbekannter Fehler' })
+            }
+          } catch (e) {
+            failed++
+            errors.push({ id: item.id, title: item.title, error: e instanceof Error ? e.message : 'Netzwerkfehler' })
+          }
+        })
+      )
+
+      setBulkProgress({ current: Math.min(i + concurrency, total), total, success, failed })
+    }
+
+    setBulkErrors(errors)
+    setInfo(`${success} von ${total} ausgewählten Items klassifiziert.`)
+    setSelected(new Set())
+    loadItems(); loadStats()
+
+    setBulkProgress(null)
+    setBulkClassifying(false)
   }
 
   const stopBulkClassify = () => {
     bulkStopRef.current = true
-    abortControllerRef.current?.abort()
   }
 
   const handleAddManual = async (itemId: string, topicId: string) => {
@@ -257,36 +347,23 @@ export default function ReviewPage() {
         description="KI-Klassifizierung prüfen und Zuordnungen bestätigen"
         icon="✓"
         action={
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1 text-xs text-gray-500">
-              Limit
-              <input
-                type="number"
-                min={1}
-                max={500}
-                value={bulkLimit}
-                onChange={e => setBulkLimit(Number(e.target.value))}
-                className="w-16 rounded border border-gray-200 px-2 py-1 text-xs"
-              />
-            </label>
-            <button
-              onClick={handleClassifyAll}
-              disabled={bulkClassifying}
-              className="inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm"
-            >
-              {bulkClassifying ? (
-                <>
-                  <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  Klassifiziere…
-                </>
-              ) : (
-                <>
-                  <span>🧠</span>
-                  Alle pending klassifizieren
-                </>
-              )}
-            </button>
-          </div>
+          <button
+            onClick={handleClassifyAll}
+            disabled={bulkClassifying}
+            className="inline-flex items-center gap-1.5 rounded-md bg-purple-600 px-3.5 py-2 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50 transition-colors shadow-sm"
+          >
+            {bulkClassifying ? (
+              <>
+                <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                Klassifiziere…
+              </>
+            ) : (
+              <>
+                <span>🧠</span>
+                Alle pending klassifizieren
+              </>
+            )}
+          </button>
         }
       />
 
@@ -294,7 +371,11 @@ export default function ReviewPage() {
         <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-blue-700 font-medium">
-              Klassifiziere... {bulkProgress.current} / {bulkProgress.total}
+              Klassifiziere… {bulkProgress.current} / {bulkProgress.total}
+              {' '}
+              <span className="text-blue-500 font-semibold">
+                ({bulkProgress.total > 0 ? Math.round((bulkProgress.current / bulkProgress.total) * 100) : 0}%)
+              </span>
             </span>
             <div className="flex items-center gap-3 text-xs text-blue-600">
               <span>✓ {bulkProgress.success}</span>
@@ -326,6 +407,24 @@ export default function ReviewPage() {
         <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 flex justify-between">
           <span>{info}</span>
           <button onClick={() => setInfo(null)} className="text-blue-400">✕</button>
+        </div>
+      )}
+      {bulkErrors.length > 0 && (
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-red-700">{bulkErrors.length} Items fehlgeschlagen</p>
+            <button onClick={() => setBulkErrors([])} className="text-red-400 text-xs">✕</button>
+          </div>
+          <ul className="space-y-1">
+            {bulkErrors.slice(0, 5).map(e => (
+              <li key={e.id} className="text-xs text-red-600">
+                <span className="font-medium">{e.title.slice(0, 50)}</span>: {e.error}
+              </li>
+            ))}
+            {bulkErrors.length > 5 && (
+              <li className="text-xs text-red-400">…und {bulkErrors.length - 5} weitere</li>
+            )}
+          </ul>
         </div>
       )}
 
@@ -378,6 +477,13 @@ export default function ReviewPage() {
           {selected.size > 0 && (
             <div className="flex items-center gap-1">
               <span className="text-xs text-gray-500">{selected.size} gewählt:</span>
+              <button
+                onClick={handleClassifySelected}
+                disabled={bulkClassifying}
+                className="rounded-md bg-purple-600 px-2.5 py-1 text-xs text-white hover:bg-purple-700 disabled:opacity-50"
+              >
+                🧠 Klassifizieren
+              </button>
               <button onClick={() => handleBulk('approve')} className="rounded-md bg-green-600 px-2.5 py-1 text-xs text-white hover:bg-green-700">✓ Erledigen</button>
               <button onClick={() => handleBulk('reject')} className="rounded-md bg-red-500 px-2.5 py-1 text-xs text-white hover:bg-red-600">✕ Ablehnen</button>
               <button onClick={() => handleBulk('delete')} className="rounded-md border border-red-200 px-2.5 py-1 text-xs text-red-500 hover:bg-red-50">Löschen</button>
@@ -456,6 +562,7 @@ export default function ReviewPage() {
                           {item.ai_summary_short && (
                             <p className="mt-1 text-[11px] text-blue-600">{item.ai_summary_short}</p>
                           )}
+                          <AiPathBreadcrumb paths={item.ai_paths ?? null} />
                         </div>
                       )}
                       <div className="mt-1 flex items-center gap-3 text-[11px] text-gray-400">
@@ -470,15 +577,30 @@ export default function ReviewPage() {
                       {item.processing_error && (
                         <p className="mt-1 text-xs text-red-600">⚠ {item.processing_error}</p>
                       )}
+                      {classifyResults.has(item.id) && (
+                        <div className="mt-1.5 flex items-center gap-1 flex-wrap">
+                          <span className="text-[10px] text-green-600 font-medium">✓ Klassifiziert:</span>
+                          {classifyResults.get(item.id)!.map((seg, i) => (
+                            <span key={i} className="flex items-center gap-1">
+                              {i > 0 && <span className="text-purple-300 text-[10px]">›</span>}
+                              <span className="rounded bg-purple-50 border border-purple-100 px-1.5 py-0.5 text-[10px] text-purple-700 font-medium">{seg}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       {expandedId === item.id && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
-                          {item.topics?.name && (
+                          {(item.ai_paths || item.topics?.name) && (
                             <div className="mb-3">
                               <p className="mb-1 text-xs font-medium text-gray-600">Klassifizierter Pfad</p>
-                              <div className="rounded bg-purple-50 border border-purple-100 px-2 py-1.5 text-xs text-purple-800">
-                                {item.topics.name}
-                              </div>
+                              {item.ai_paths ? (
+                                <AiPathBreadcrumb paths={item.ai_paths} />
+                              ) : (
+                                <div className="rounded bg-purple-50 border border-purple-100 px-2 py-1.5 text-xs text-purple-800">
+                                  {item.topics?.name}
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -489,7 +611,6 @@ export default function ReviewPage() {
                             </div>
                           )}
 
-                          {/* Enrichment Status */}
                           {item.source_url && (
                             <div className="mb-3 text-xs text-muted-foreground flex items-center gap-2">
                               {item.enrichment_status === 'success' && (
