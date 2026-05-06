@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { cn, levelLabel } from '@/lib/utils'
 import type { TopicNode } from '@/lib/types/app.types'
@@ -75,6 +75,44 @@ export function TopicTreeBrowser({ roots }: TopicTreeBrowserProps) {
 
   const expandAll = () => setExpanded(new Set(expandableIds))
   const collapseAll = () => setExpanded(new Set())
+
+  // When a node is expanded but children aren't loaded yet, fetch them
+  useEffect(() => {
+    const findNode = (nodes: TreeNode[], id: string): TreeNode | null => {
+      for (const node of nodes) {
+        if (node.id === id) return node
+        if (node.children) { const f = findNode(node.children, id); if (f) return f }
+      }
+      return null
+    }
+    const needsFetch = [...expanded].filter(id => {
+      const node = findNode(treeData, id)
+      return node && node.children === undefined && (node.childCount ?? 0) > 0
+    })
+    if (needsFetch.length === 0) return
+
+    const fetchAll = async () => {
+      for (const id of needsFetch) {
+        setLoadingId(id)
+        try {
+          const res = await fetch(`/api/topics/${id}`)
+          const json = await res.json()
+          if (res.ok && json.data?.children) {
+            setTreeData(prev => updateNodeInTree(prev, id, item => ({
+              ...item,
+              children: json.data.children,
+              childCount: json.data.children.length,
+              isLeaf: json.data.children.length === 0,
+            })))
+          }
+        } catch { /* silent */ } finally {
+          setLoadingId(null)
+        }
+      }
+    }
+    fetchAll()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded])
 
   const toggleExpand = useCallback(async (id: string) => {
     if (expanded.has(id)) {

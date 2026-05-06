@@ -18,13 +18,16 @@ async function getTopicTreeDepth2(): Promise<TopicNode[]> {
 
   const nodes = new Map<string, TopicNode>()
   for (const topic of topics ?? []) {
-    nodes.set(topic.id, { ...topic, children: [], childCount: 0, isLeaf: topic.level >= 5 })
+    // children: undefined = not yet loaded; only set to [] when we actually append children below
+    nodes.set(topic.id, { ...topic, children: undefined, childCount: 0, isLeaf: topic.level >= 8 })
   }
 
   const roots: TopicNode[] = []
   for (const node of nodes.values()) {
     if (node.parent_id && nodes.has(node.parent_id)) {
-      nodes.get(node.parent_id)!.children!.push(node)
+      const parent = nodes.get(node.parent_id)!
+      if (!parent.children) parent.children = []
+      parent.children.push(node)
     } else if (node.parent_id === null) {
       roots.push(node)
     }
@@ -47,7 +50,7 @@ async function getTopicTreeDepth2(): Promise<TopicNode[]> {
     for (const node of nodes.values()) {
       const childCount = countMap.get(node.id) ?? 0
       node.childCount = childCount
-      node.isLeaf = node.level >= 5 || childCount === 0
+      node.isLeaf = node.level >= 8 || childCount === 0
     }
   }
 
