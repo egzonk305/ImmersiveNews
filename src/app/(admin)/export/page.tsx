@@ -84,13 +84,13 @@ export default function ExportPage() {
       />
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between items-center">
+        <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50/60 px-4 py-3 text-sm text-red-700 flex justify-between items-center">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">✕</button>
         </div>
       )}
 
-      <div className="max-w-lg bg-white rounded-lg border border-gray-200 p-6 space-y-5">
+      <div className="max-w-lg rounded-xl glass-card p-6 space-y-5">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Format</label>
           <div className="flex gap-3">
@@ -98,10 +98,10 @@ export default function ExportPage() {
               <button
                 key={f}
                 onClick={() => setFormat(f)}
-                className={`rounded-md border px-4 py-2 text-sm transition-colors ${
+                className={`rounded-xl border px-4 py-2 text-sm transition-colors ${
                   format === f
                     ? 'border-blue-300 bg-blue-50 text-blue-700 font-medium'
-                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    : 'border-slate-200/60 bg-white/60 text-slate-600 hover:bg-white/90 transition-all'
                 }`}
               >
                 {f.toUpperCase()}
@@ -115,7 +115,7 @@ export default function ExportPage() {
           <select
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value)}
-            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm bg-white"
+            className="w-full rounded-xl border border-slate-200/60 bg-white/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/60"
           >
             <option value="">Alle Ebenen</option>
             <option value="1">Level 1 – Oberthemen</option>
@@ -129,7 +129,7 @@ export default function ExportPage() {
         <button
           onClick={handleExport}
           disabled={exporting}
-          className="w-full rounded-md bg-blue-600 px-4 py-2.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="btn-primary rounded-xl w-full px-4 py-2.5 text-sm disabled:opacity-50"
         >
           {exporting ? 'Exportieren…' : `Als ${format.toUpperCase()} exportieren`}
         </button>

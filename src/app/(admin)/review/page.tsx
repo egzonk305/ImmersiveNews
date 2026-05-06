@@ -612,7 +612,7 @@ export default function ReviewPage() {
                           )}
 
                           {item.source_url && (
-                            <div className="mb-3 text-xs text-muted-foreground flex items-center gap-2">
+                            <div className="mb-3 text-xs text-slate-400 flex items-center gap-2">
                               {item.enrichment_status === 'success' && (
                                 <span className="text-green-600">Volltext geladen ({item.enriched_content?.length ?? 0} Zeichen)</span>
                               )}

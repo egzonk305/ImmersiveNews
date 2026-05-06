@@ -79,8 +79,4 @@
     background-clip: text;
   }
 
-  /* Gradient border shimmer */
-  .border-gradient {
-    border-image: linear-gradient(135deg, #93c5fd, #c4b5fd, #f9a8d4) 1;
-  }
 }

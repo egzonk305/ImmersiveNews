@@ -38,7 +38,6 @@ const navGroups: NavGroup[] = [
     items: [
       { href: '/settings/classifier', label: 'Klassifizierer', icon: '🧠' },
       { href: '/classification-logs', label: 'KI-Logs', icon: '📋' },
-      { href: '/topic-suggestions', label: 'Topic-Vorschläge', icon: '💡' },
     ],
   },
   {

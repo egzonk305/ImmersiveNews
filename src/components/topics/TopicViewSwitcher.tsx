@@ -18,7 +18,7 @@ export function TopicViewSwitcher({ roots }: TopicViewSwitcherProps) {
   return (
     <div>
       {/* View Toggle */}
-      <div className="flex items-center gap-1 mb-4 bg-gray-100 rounded-lg p-0.5 w-fit">
+      <div className="flex items-center gap-1 mb-4 rounded-xl p-0.5 w-fit" style={{ background: 'rgba(255,255,255,0.40)', border: '1px solid rgba(255,255,255,0.60)' }}>
         {([
           { key: 'table' as ViewMode, label: 'Tabelle', icon: '☰' },
           { key: 'tree' as ViewMode, label: 'Baum', icon: '▤' },
@@ -27,10 +27,10 @@ export function TopicViewSwitcher({ roots }: TopicViewSwitcherProps) {
             key={item.key}
             onClick={() => setView(item.key)}
             className={cn(
-              'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all',
+              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
               view === item.key
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-white/90 text-slate-800 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-white/40'
             )}
           >
             <span>{item.icon}</span>

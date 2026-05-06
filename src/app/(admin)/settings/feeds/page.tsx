@@ -184,7 +184,7 @@ export default function FeedsSettingsPage() {
       />
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between items-center">
+        <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50/60 px-4 py-3 text-sm text-red-700 flex justify-between items-center">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">✕</button>
         </div>
@@ -192,14 +192,14 @@ export default function FeedsSettingsPage() {
 
       <div className="max-w-3xl space-y-6">
         {/* Aktive Feeds */}
-        <div className="bg-white rounded-lg border border-gray-200">
+        <div className="rounded-xl glass-card">
           <div className="border-b border-gray-100 px-5 py-4 flex items-center justify-between">
             <h2 className="text-sm font-medium text-gray-700">
               Feeds ({feeds.length})
             </h2>
             <button
               onClick={() => setShowForm(!showForm)}
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700 transition-colors"
+              className="btn-primary rounded-xl px-3 py-1.5 text-xs transition-colors"
             >
               {showForm ? 'Abbrechen' : '+ Feed hinzufügen'}
             </button>
@@ -207,7 +207,7 @@ export default function FeedsSettingsPage() {
 
           {/* Neuer Feed Formular */}
           {showForm && (
-            <div className="border-b border-gray-100 px-5 py-4 bg-gray-50 space-y-3">
+            <div className="border-b border-gray-100 px-5 py-4 bg-white/30 space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Name</label>
                 <input
@@ -215,7 +215,7 @@ export default function FeedsSettingsPage() {
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="z.B. Heise News"
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/60 focus:border-violet-300"
                 />
               </div>
               <div>
@@ -225,7 +225,7 @@ export default function FeedsSettingsPage() {
                   value={formUrl}
                   onChange={(e) => setFormUrl(e.target.value)}
                   placeholder="https://example.com/rss.xml"
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/60 focus:border-violet-300"
                 />
               </div>
               <div className="flex items-end gap-3">
@@ -245,7 +245,7 @@ export default function FeedsSettingsPage() {
                 <button
                   onClick={handleCreate}
                   disabled={saving || !formName.trim() || !formUrl.trim()}
-                  className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="btn-primary rounded-xl px-4 py-2 text-sm disabled:opacity-50 transition-colors"
                 >
                   {saving ? 'Speichern…' : 'Speichern'}
                 </button>
@@ -269,7 +269,7 @@ export default function FeedsSettingsPage() {
           ) : (
             <div className="divide-y divide-gray-100">
               {feeds.map((feed) => (
-                <div key={feed.id} className="px-5 py-4 hover:bg-gray-50/50 transition-colors">
+                <div key={feed.id} className="px-5 py-4 hover:bg-white/60 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       {editingId === feed.id ? (
@@ -283,7 +283,7 @@ export default function FeedsSettingsPage() {
                               if (e.key === 'Escape') setEditingId(null)
                             }}
                             autoFocus
-                            className="flex-1 rounded border border-blue-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="flex-1 rounded border border-violet-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/60 focus:border-violet-300"
                           />
                           <button onClick={() => handleRename(feed.id)} className="text-xs text-blue-600 hover:text-blue-800 font-medium">OK</button>
                           <button onClick={() => setEditingId(null)} className="text-xs text-gray-400 hover:text-gray-600">Abb.</button>
@@ -333,20 +333,20 @@ export default function FeedsSettingsPage() {
                       <button
                         onClick={() => handleFetch(feed.id)}
                         disabled={fetchingId === feed.id}
-                        className="rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+                        className="rounded-xl border border-slate-200/60 bg-white/60 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-white/90 disabled:opacity-50 transition-all"
                         title="Jetzt abrufen"
                       >
                         {fetchingId === feed.id ? '⟳…' : '⟳ Abrufen'}
                       </button>
                       <button
                         onClick={() => handleToggleActive(feed)}
-                        className="rounded-md border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
+                        className="rounded-xl border border-slate-200/60 bg-white/60 px-2.5 py-1.5 text-xs text-slate-600 hover:bg-white/90 transition-all"
                       >
                         {feed.is_active ? '⏸' : '▶'}
                       </button>
                       <button
                         onClick={() => handleDelete(feed.id)}
-                        className="rounded-md border border-red-200 px-2.5 py-1.5 text-xs text-red-500 hover:bg-red-50 transition-colors"
+                        className="rounded-xl border border-red-200/60 bg-red-50/60 px-2.5 py-1.5 text-xs text-red-600 hover:bg-red-100/60 transition-all"
                       >
                         ✕
                       </button>

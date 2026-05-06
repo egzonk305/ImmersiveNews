@@ -57,13 +57,13 @@ export default function SchemaPage() {
       />
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50/60 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {isFallback && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+        <div className="mb-4 rounded-xl border border-amber-200/60 bg-amber-50/60 px-4 py-3 text-xs text-amber-700">
           Schema-Introspection-Funktion nicht verfügbar. Zeige Fallback-Informationen.
           Führe die SQL-Migration <code className="bg-amber-100 px-1 rounded">get_schema_info()</code> aus für vollständige Spaltendetails.
         </div>
@@ -79,10 +79,10 @@ export default function SchemaPage() {
             const isDetailed = Array.isArray(columns) && columns.length > 0 && typeof columns[0] === 'object' && 'data_type' in columns[0]
 
             return (
-              <div key={tableName} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div key={tableName} className="rounded-xl glass-card overflow-hidden">
                 <button
                   onClick={() => setExpandedTable(isExpanded ? null : tableName)}
-                  className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                  className="w-full px-5 py-3.5 flex items-center justify-between hover:bg-white/30 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-400 font-mono">{isExpanded ? '▼' : '▶'}</span>
@@ -113,7 +113,7 @@ export default function SchemaPage() {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                           {(columns as Array<{ column_name: string; data_type: string; is_nullable: string; column_default: string | null }>).map(col => (
-                            <tr key={col.column_name} className="hover:bg-gray-50/50">
+                            <tr key={col.column_name} className="hover:bg-white/30">
                               <td className="px-5 py-2 font-mono text-gray-700">{col.column_name}</td>
                               <td className="px-3 py-2">
                                 <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-mono ${dataTypeColor(col.data_type)}`}>

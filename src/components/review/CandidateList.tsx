@@ -98,9 +98,9 @@ export function CandidateList({ itemId, onChanged }: Props) {
     return (
       <div className="space-y-2 py-1">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded border border-gray-200 p-3">
-            <div className="h-3 w-1/2 rounded bg-gray-100 animate-pulse" />
-            <div className="mt-2 h-2 w-1/3 rounded bg-gray-100 animate-pulse" />
+          <div key={i} className="rounded-xl border border-white/60 bg-white/40 p-3">
+            <div className="h-3 w-1/2 rounded bg-slate-100 animate-pulse" />
+            <div className="mt-2 h-2 w-1/3 rounded bg-slate-100 animate-pulse" />
           </div>
         ))}
       </div>
@@ -109,9 +109,9 @@ export function CandidateList({ itemId, onChanged }: Props) {
 
   if (candidates.length === 0) {
     return (
-      <div className="rounded border border-dashed border-gray-200 bg-gray-50/50 px-4 py-6 text-center">
-        <p className="text-xs text-gray-500 mb-1">Keine KI-Kandidaten vorhanden</p>
-        <p className="text-[11px] text-gray-400">
+      <div className="rounded-xl border border-dashed border-slate-200/60 bg-white/30 px-4 py-6 text-center">
+        <p className="text-xs text-slate-500 mb-1">Keine KI-Kandidaten vorhanden</p>
+        <p className="text-[11px] text-slate-400">
           Klassifizierung starten oder manuell zuordnen.
         </p>
       </div>
@@ -128,31 +128,33 @@ export function CandidateList({ itemId, onChanged }: Props) {
         .map(c => (
           <div
             key={c.id}
-            className={`rounded border p-3 text-sm ${
-              c.is_primary ? 'border-blue-300 bg-blue-50/40' : 'border-gray-200 bg-white'
+            className={`rounded-xl border p-3 text-sm ${
+              c.is_primary
+                ? 'border-violet-200/60 bg-violet-50/40'
+                : 'border-white/60 bg-white/40'
             }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-gray-800">
+                  <span className="font-medium text-slate-800">
                     {c.topics?.full_path ?? c.topics?.name ?? '(unbekanntes Topic)'}
                   </span>
                   {c.is_primary && (
-                    <span className="rounded bg-blue-600 px-1.5 py-0.5 text-[10px] text-white">
+                    <span className="rounded-md px-1.5 py-0.5 text-[10px] text-white" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
                       PRIMARY
                     </span>
                   )}
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] ${sourceColors[c.source]}`}>
+                  <span className={`rounded-md px-1.5 py-0.5 text-[10px] ${sourceColors[c.source]}`}>
                     {c.source === 'llm' ? 'KI' : 'manuell'}
                   </span>
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] ${statusColors[c.status]}`}>
+                  <span className={`rounded-md px-1.5 py-0.5 text-[10px] ${statusColors[c.status]}`}>
                     {c.status === 'suggested' ? 'Vorschlag' : c.status === 'confirmed' ? 'bestätigt' : 'abgelehnt'}
                   </span>
                 </div>
                 {c.confidence !== null && (
                   <div className="mt-2 flex items-center gap-2">
-                    <div className="flex-1 max-w-[140px] h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="flex-1 max-w-[140px] h-1.5 rounded-full bg-slate-100 overflow-hidden">
                       <div
                         className={`h-full rounded-full ${
                           c.confidence >= 0.8 ? 'bg-green-500' :
@@ -162,13 +164,13 @@ export function CandidateList({ itemId, onChanged }: Props) {
                         style={{ width: `${c.confidence * 100}%` }}
                       />
                     </div>
-                    <span className="text-[10px] text-gray-500 tabular-nums">
+                    <span className="text-[10px] text-slate-500 tabular-nums">
                       {(c.confidence * 100).toFixed(0)}%
                     </span>
                   </div>
                 )}
                 {c.reason && (
-                  <p className="mt-1 text-xs text-gray-600 italic">{c.reason}</p>
+                  <p className="mt-1 text-xs text-slate-500 italic">{c.reason}</p>
                 )}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
@@ -176,7 +178,7 @@ export function CandidateList({ itemId, onChanged }: Props) {
                   <button
                     disabled={busyId === c.id}
                     onClick={() => action(c.id, { status: 'confirmed', is_primary: c.is_primary })}
-                    className="rounded border border-green-200 px-2 py-1 text-[11px] text-green-700 hover:bg-green-50 disabled:opacity-50"
+                    className="rounded-lg border border-green-200/60 bg-green-50/60 px-2 py-1 text-[11px] text-green-700 hover:bg-green-100/60 disabled:opacity-50"
                     title="Annehmen"
                   >
                     ✓
@@ -186,7 +188,7 @@ export function CandidateList({ itemId, onChanged }: Props) {
                   <button
                     disabled={busyId === c.id}
                     onClick={() => action(c.id, { status: 'rejected' })}
-                    className="rounded border border-red-200 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    className="rounded-lg border border-red-200/60 bg-red-50/60 px-2 py-1 text-[11px] text-red-600 hover:bg-red-100/60 disabled:opacity-50"
                     title="Ablehnen"
                   >
                     ✕
@@ -196,7 +198,7 @@ export function CandidateList({ itemId, onChanged }: Props) {
                   <button
                     disabled={busyId === c.id}
                     onClick={() => action(c.id, { is_primary: true })}
-                    className="rounded border border-blue-200 px-2 py-1 text-[11px] text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                    className="rounded-lg border border-violet-200/60 bg-violet-50/60 px-2 py-1 text-[11px] text-violet-600 hover:bg-violet-100/60 disabled:opacity-50"
                     title="Als primary setzen"
                   >
                     ★
@@ -205,7 +207,7 @@ export function CandidateList({ itemId, onChanged }: Props) {
                 <button
                   disabled={busyId === c.id}
                   onClick={() => remove(c.id)}
-                  className="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+                  className="rounded-lg border border-slate-200/60 bg-white/40 px-2 py-1 text-[11px] text-slate-400 hover:bg-white/80 disabled:opacity-50"
                   title="Entfernen"
                 >
                   🗑

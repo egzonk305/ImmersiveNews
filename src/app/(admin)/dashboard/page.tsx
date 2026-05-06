@@ -14,7 +14,6 @@ interface DashboardStats {
   items_last_24h: number
   avg_primary_confidence: number | null
   auto_created_topics?: number
-  story_count?: number
   avg_processing_ms?: number | null
 }
 
@@ -114,7 +113,6 @@ export default function DashboardPage() {
           { label: 'Klassifiziert', value: s?.classified_items, href: '/review?status=pending', icon: '✓', accent: 'text-blue-700 bg-blue-50 border-blue-200' },
           { label: 'Fehlerhaft', value: s?.failed_items, href: '/review?status=pending', icon: '⚠', accent: 'text-red-700 bg-red-50 border-red-200' },
           { label: 'Auto-Topics', value: s?.auto_created_topics, href: '/topics', icon: '＋', accent: 'text-purple-700 bg-purple-50 border-purple-200' },
-          { label: 'Storys', value: s?.story_count, href: '/review', icon: '◈', accent: 'text-cyan-700 bg-cyan-50 border-cyan-200' },
           { label: 'Ø Verarbeitung', value: s?.avg_processing_ms ? `${s.avg_processing_ms} ms` : null, href: '/classification-logs', icon: '⏱', accent: 'text-gray-700 bg-gray-50 border-gray-200' },
         ].map(c => (
           <Link
@@ -148,7 +146,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Items per Root */}
-        <div className="rounded-lg border border-gray-200 bg-white p-4 lg:col-span-2">
+        <div className="rounded-xl glass-card p-4 lg:col-span-2">
           <p className="text-xs text-gray-500 mb-2">Items pro Root-Thema</p>
           {data?.itemsPerRoot.length ? (
             <ul className="space-y-1.5">
@@ -218,15 +216,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Low Confidence */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50/30">
-        <div className="border-b border-amber-100 px-4 py-3">
+      <div className="rounded-xl glass-card overflow-hidden" style={{ borderColor: 'rgba(251,191,36,0.30)' }}>
+        <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(251,191,36,0.20)', background: 'rgba(255,251,235,0.40)' }}>
           <h2 className="text-sm font-medium text-amber-800">Items mit niedriger Konfidenz</h2>
         </div>
         {data?.lowConfidence.length ? (
-          <ul className="divide-y divide-amber-100">
+          <ul className="divide-y divide-amber-100/60">
             {data.lowConfidence.map(it => (
               <li key={it.incoming_item_id} className="px-4 py-2.5 text-sm flex items-center justify-between gap-3">
-                <Link href={`/review`} className="truncate text-gray-800 hover:text-blue-600">
+                <Link href="/review" className="truncate text-gray-800 hover:text-violet-600">
                   {it.title}
                 </Link>
                 <div className="flex items-center gap-3 flex-shrink-0">
@@ -252,23 +250,23 @@ export default function DashboardPage() {
         <div className="p-4 grid grid-cols-2 lg:grid-cols-3 gap-3">
           {[
             { href: '/topics', label: 'Topics', icon: '☰', desc: 'Themenbaum verwalten' },
-            { href: '/topics/new', label: 'Neues Topic', icon: '＋', desc: 'Unterthema anlegen' },
             { href: '/review', label: 'Review-Queue', icon: '✓', desc: 'KI-Vorschläge prüfen' },
             { href: '/settings/feeds', label: 'RSS-Feeds', icon: '⟳', desc: 'Feed-Quellen verwalten' },
             { href: '/settings/classifier', label: 'KI-Einstellungen', icon: '🧠', desc: 'Modell konfigurieren' },
             { href: '/classification-logs', label: 'KI-Logs', icon: '📋', desc: 'Klassifizierungsläufe' },
+            { href: '/cleanup', label: 'Aufräumen', icon: '🗑', desc: 'Alte Daten bereinigen' },
           ].map(item => (
             <Link
               key={item.href}
               href={item.href}
-              className="group rounded-md border border-gray-200 px-3 py-3 text-sm hover:bg-gray-50 hover:border-gray-300 transition-colors flex items-start gap-3"
+              className="group rounded-xl border border-white/50 bg-white/40 px-3 py-3 text-sm hover:bg-white/70 transition-all flex items-start gap-3"
             >
-              <span className="w-8 h-8 shrink-0 rounded-md bg-gray-50 group-hover:bg-white border border-gray-200 flex items-center justify-center text-gray-600">
+              <span className="w-8 h-8 shrink-0 rounded-xl bg-white/60 group-hover:bg-white/90 border border-white/60 flex items-center justify-center text-slate-500">
                 {item.icon}
               </span>
               <div className="min-w-0">
-                <p className="text-gray-800 font-medium">{item.label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                <p className="text-slate-700 font-medium">{item.label}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
               </div>
             </Link>
           ))}

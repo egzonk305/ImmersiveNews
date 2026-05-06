@@ -115,7 +115,7 @@ export default function ImportPage() {
 
       <div className="max-w-2xl space-y-6">
         {/* Format wählen */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+        <div className="rounded-xl glass-card p-6 space-y-4">
           <h2 className="text-sm font-medium text-gray-700 border-b border-gray-100 pb-3">
             1. Format wählen
           </h2>
@@ -124,17 +124,17 @@ export default function ImportPage() {
               <button
                 key={f}
                 onClick={() => { setFormat(f); setParsed([]); setResult(null) }}
-                className={`rounded-md border px-4 py-2 text-sm transition-colors ${
+                className={`rounded-xl border px-4 py-2 text-sm transition-colors ${
                   format === f
                     ? 'border-blue-300 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    : 'border-slate-200/60 bg-white/60 text-slate-600 hover:bg-white/90 transition-all'
                 }`}
               >
                 {f.toUpperCase()}
               </button>
             ))}
           </div>
-          <div className="bg-gray-50 rounded-md p-3 text-xs text-gray-500 space-y-1">
+          <div className="bg-white/30 rounded-md p-3 text-xs text-gray-500 space-y-1">
             {format === 'csv' ? (
               <>
                 <p className="font-medium text-gray-600">CSV-Format (Separator: Komma, Semikolon oder Tab)</p>
@@ -153,7 +153,7 @@ export default function ImportPage() {
         </div>
 
         {/* Datei hochladen */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+        <div className="rounded-xl glass-card p-6 space-y-4">
           <h2 className="text-sm font-medium text-gray-700 border-b border-gray-100 pb-3">
             2. Datei auswählen
           </h2>
@@ -162,27 +162,27 @@ export default function ImportPage() {
             type="file"
             accept={format === 'csv' ? '.csv,.tsv,.txt' : '.json'}
             onChange={handleFile}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border file:border-gray-200 file:text-sm file:bg-white file:text-gray-700 hover:file:bg-gray-50"
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border file:border-slate-200/60 file:text-sm file:bg-white/60 file:text-gray-700 hover:file:bg-white/90"
           />
         </div>
 
         {/* Fehler */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 text-sm text-red-600">
+          <div className="rounded-xl border border-red-200/60 bg-red-50/60 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {/* Vorschau */}
         {parsed.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+          <div className="rounded-xl glass-card p-6 space-y-4">
             <h2 className="text-sm font-medium text-gray-700 border-b border-gray-100 pb-3">
               3. Vorschau ({parsed.length} Einträge)
             </h2>
             <div className="max-h-64 overflow-y-auto rounded border border-gray-100">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
+                  <tr className="bg-white/30 border-b border-gray-100">
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">#</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Name</th>
                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Level</th>
@@ -201,7 +201,7 @@ export default function ImportPage() {
                 </tbody>
               </table>
               {parsed.length > 50 && (
-                <p className="px-3 py-2 text-xs text-gray-400 bg-gray-50">
+                <p className="px-3 py-2 text-xs text-gray-400 bg-white/30">
                   … und {parsed.length - 50} weitere
                 </p>
               )}
@@ -210,7 +210,7 @@ export default function ImportPage() {
             <button
               onClick={handleImport}
               disabled={importing}
-              className="px-5 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="btn-primary rounded-xl px-5 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {importing ? `Importiere… (${parsed.length} Einträge)` : `${parsed.length} Einträge importieren`}
             </button>
@@ -219,7 +219,7 @@ export default function ImportPage() {
 
         {/* Ergebnis */}
         {result && (
-          <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-3">
+          <div className="rounded-xl glass-card p-6 space-y-3">
             <h2 className="text-sm font-medium text-gray-700 border-b border-gray-100 pb-3">
               Import-Ergebnis
             </h2>
@@ -227,9 +227,9 @@ export default function ImportPage() {
               {result.success} von {parsed.length} Einträgen erfolgreich importiert
             </p>
             {result.errors.length > 0 && (
-              <div className="bg-red-50 rounded-md p-3 space-y-1">
+              <div className="rounded-xl border border-red-200/60 bg-red-50/60 p-3 space-y-1">
                 {result.errors.map((err, i) => (
-                  <p key={i} className="text-xs text-red-600">{err}</p>
+                  <p key={i} className="text-xs text-red-700">{err}</p>
                 ))}
               </div>
             )}

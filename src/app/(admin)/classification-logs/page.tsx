@@ -112,7 +112,7 @@ export default function ClassificationLogsPage() {
       />
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between">
+        <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50/60 px-4 py-3 text-sm text-red-700 flex justify-between">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-red-400">✕</button>
         </div>
@@ -125,10 +125,10 @@ export default function ClassificationLogsPage() {
           <button
             key={s}
             onClick={() => { setStatusFilter(s); setPage(1) }}
-            className={`rounded-md border px-3 py-1 text-xs transition-colors ${
+            className={`rounded-xl border px-3 py-1 text-xs transition-colors ${
               statusFilter === s
-                ? 'border-blue-300 bg-blue-50 text-blue-700 font-medium'
-                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                ? 'border-violet-300 bg-violet-50/60 text-violet-700 font-medium'
+                : 'border-slate-200/60 bg-white/60 text-slate-600 hover:bg-white/90'
             }`}
           >
             {s === '' ? 'Alle' : statusLabels[s as RunStatus]}
@@ -139,9 +139,9 @@ export default function ClassificationLogsPage() {
         </span>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+      <div className="rounded-xl glass-card overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-[1fr_120px_100px_80px_36px] gap-3 border-b border-gray-100 px-4 py-2 text-xs font-medium text-gray-500 bg-gray-50">
+        <div className="grid grid-cols-[1fr_120px_100px_80px_36px] gap-3 border-b border-gray-100 px-4 py-2 text-xs font-medium text-gray-500 bg-white/30">
           <span>Item</span>
           <span>Modell</span>
           <span>Zeit</span>
@@ -182,7 +182,7 @@ export default function ClassificationLogsPage() {
                   </span>
                   <button
                     onClick={() => toggleExpand(run)}
-                    className="rounded border border-gray-200 px-1.5 py-1 text-[11px] hover:bg-gray-50"
+                    className="rounded-xl border border-slate-200/60 bg-white/60 px-1.5 py-1 text-[11px] text-slate-600 hover:bg-white/90 transition-all"
                     title="Details anzeigen"
                   >
                     {expandedId === run.id ? '▲' : '▼'}
@@ -190,7 +190,7 @@ export default function ClassificationLogsPage() {
                 </div>
 
                 {expandedId === run.id && (
-                  <div className="border-t border-gray-100 bg-gray-50 px-4 py-3">
+                  <div className="border-t border-gray-100 bg-white/40 px-4 py-3">
                     {loadingDetail ? (
                       <p className="text-xs text-gray-400">Lade Details…</p>
                     ) : expandedRun ? (
@@ -249,12 +249,12 @@ export default function ClassificationLogsPage() {
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="rounded border border-gray-200 px-2.5 py-1 text-xs disabled:opacity-30 hover:bg-gray-50"
+                className="rounded-xl border border-slate-200/60 bg-white/60 px-2.5 py-1 text-xs text-slate-600 disabled:opacity-30 hover:bg-white/90 transition-all"
               >←</button>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="rounded border border-gray-200 px-2.5 py-1 text-xs disabled:opacity-30 hover:bg-gray-50"
+                className="rounded-xl border border-slate-200/60 bg-white/60 px-2.5 py-1 text-xs text-slate-600 disabled:opacity-30 hover:bg-white/90 transition-all"
               >→</button>
             </div>
           </div>

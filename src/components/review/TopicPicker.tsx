@@ -31,36 +31,36 @@ export function TopicPicker({ open, onClose, onPick }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col shadow-xl">
-        <div className="border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-700">Topic auswählen</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
+      <div className="glass-card rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+        <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.60)' }}>
+          <h3 className="text-sm font-medium text-slate-700">Topic auswählen</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 transition-colors">✕</button>
         </div>
-        <div className="px-4 py-3 border-b border-gray-100">
+        <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.60)' }}>
           <input
             type="text"
             autoFocus
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Suchen…"
-            className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-slate-200/60 bg-white/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/60"
           />
         </div>
         <div className="overflow-auto flex-1">
           {loading ? (
-            <p className="p-6 text-center text-sm text-gray-400">Lade…</p>
+            <p className="p-6 text-center text-sm text-slate-400">Lade…</p>
           ) : filtered.length === 0 ? (
-            <p className="p-6 text-center text-sm text-gray-400">Keine Treffer</p>
+            <p className="p-6 text-center text-sm text-slate-400">Keine Treffer</p>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-white/40">
               {filtered.map(t => (
                 <li key={t.id}>
                   <button
                     onClick={() => { onPick(t); onClose() }}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-white/50 transition-colors"
                   >
-                    <div className="text-gray-800">{t.name}</div>
-                    <div className="text-[11px] text-gray-400">{t.full_path}</div>
+                    <div className="text-slate-800">{t.name}</div>
+                    <div className="text-[11px] text-slate-400">{t.full_path}</div>
                   </button>
                 </li>
               ))}

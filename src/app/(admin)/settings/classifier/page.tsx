@@ -165,18 +165,18 @@ export default function ClassifierSettingsPage() {
       />
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50/60 px-4 py-3 text-sm text-red-700">
           {error}
         </div>
       )}
       {okMessage && (
-        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+        <div className="mb-4 rounded-xl border border-green-200/60 bg-green-50/60 px-4 py-3 text-sm text-green-700">
           {okMessage}
         </div>
       )}
 
       <div className="max-w-2xl space-y-6">
-        <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+        <section className="rounded-xl glass-card p-5 space-y-4">
           <h2 className="text-sm font-medium text-gray-700">Modell &amp; Verbindung</h2>
 
           <div>
@@ -188,7 +188,7 @@ export default function ClassifierSettingsPage() {
               value={settings.ollama_base_url}
               onChange={e => update({ ollama_base_url: e.target.value })}
               placeholder="http://localhost:11434"
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm font-mono"
+              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-violet-300/60 focus:border-violet-300"
             />
           </div>
 
@@ -201,7 +201,7 @@ export default function ClassifierSettingsPage() {
               value={settings.model_name}
               onChange={e => update({ model_name: e.target.value })}
               placeholder="qwen3:8b"
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm font-mono"
+              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-violet-300/60 focus:border-violet-300"
             />
           </div>
 
@@ -209,7 +209,7 @@ export default function ClassifierSettingsPage() {
             <button
               onClick={testConnection}
               disabled={testingConn}
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs hover:bg-gray-50 disabled:opacity-50"
+              className="rounded-xl border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs text-slate-600 hover:bg-white/90 transition-all disabled:opacity-50"
             >
               {testingConn ? 'Teste…' : 'Verbindung testen'}
             </button>
@@ -219,7 +219,7 @@ export default function ClassifierSettingsPage() {
             <p className="text-xs text-red-600">{connError}</p>
           )}
           {connResult && (
-            <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs">
+            <div className="rounded-xl border border-white/60 bg-white/40 p-3 text-xs">
               <p>
                 Verbindung: <b>{connResult.ok ? 'OK' : 'Fehler'}</b>
               </p>
@@ -236,7 +236,7 @@ export default function ClassifierSettingsPage() {
           )}
         </section>
 
-        <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+        <section className="rounded-xl glass-card p-5 space-y-4">
           <h2 className="text-sm font-medium text-gray-700">Klassifizierungs-Parameter</h2>
 
           <div className="grid grid-cols-2 gap-4">
@@ -250,7 +250,7 @@ export default function ClassifierSettingsPage() {
                 max={10}
                 value={settings.max_candidates}
                 onChange={e => update({ max_candidates: parseInt(e.target.value, 10) })}
-                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/60 focus:border-violet-300"
               />
             </div>
 
@@ -264,7 +264,7 @@ export default function ClassifierSettingsPage() {
                 max={8}
                 value={settings.max_depth}
                 onChange={e => update({ max_depth: parseInt(e.target.value, 10) })}
-                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/60 focus:border-violet-300"
               />
             </div>
           </div>
@@ -294,7 +294,7 @@ export default function ClassifierSettingsPage() {
           </label>
         </section>
 
-        <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-4">
+        <section className="rounded-xl glass-card p-5 space-y-4">
           <h2 className="text-sm font-medium text-gray-700">Modell-Parameter</h2>
 
           <div>
@@ -324,7 +324,7 @@ export default function ClassifierSettingsPage() {
                 step={512}
                 value={settings.num_ctx}
                 onChange={e => update({ num_ctx: parseInt(e.target.value, 10) })}
-                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/60 focus:border-violet-300"
               />
             </div>
 
@@ -339,7 +339,7 @@ export default function ClassifierSettingsPage() {
                 step={50}
                 value={settings.num_predict}
                 onChange={e => update({ num_predict: parseInt(e.target.value, 10) })}
-                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/60 focus:border-violet-300"
               />
             </div>
           </div>
@@ -355,7 +355,7 @@ export default function ClassifierSettingsPage() {
               step={30000}
               value={settings.timeout_ms}
               onChange={e => update({ timeout_ms: parseInt(e.target.value, 10) })}
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-300/60 focus:border-violet-300"
             />
           </div>
         </section>
@@ -364,26 +364,26 @@ export default function ClassifierSettingsPage() {
           <button
             onClick={save}
             disabled={saving}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+            className="btn-primary rounded-xl px-4 py-2 text-sm disabled:opacity-50"
           >
             {saving ? 'Speichern…' : 'Einstellungen speichern'}
           </button>
           <button
             onClick={testClassify}
             disabled={testingClassify}
-            className="rounded-md border border-gray-200 px-4 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2 text-sm text-slate-600 hover:bg-white/90 transition-all disabled:opacity-50"
           >
             {testingClassify ? 'Test läuft…' : 'Test-Klassifizierung'}
           </button>
         </div>
 
         {classifyError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div className="rounded-xl border border-red-200/60 bg-red-50/60 px-4 py-3 text-sm text-red-700">
             {classifyError}
           </div>
         )}
         {classifyResult && (
-          <section className="bg-white rounded-lg border border-gray-200 p-5 space-y-2 text-sm">
+          <section className="rounded-xl glass-card p-5 space-y-2 text-sm">
             <h2 className="text-sm font-medium text-gray-700">Test-Ergebnis</h2>
             <p>Status: {classifyResult.ok ? '✅ erfolgreich' : '⚠ Schema-Fehler'}</p>
             <p>Dauer: {classifyResult.duration_ms} ms</p>

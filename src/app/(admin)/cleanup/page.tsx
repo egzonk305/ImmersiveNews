@@ -30,14 +30,14 @@ function CleanupCard({
   children: React.ReactNode
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
+    <div className="rounded-xl glass-card p-5">
       <div className="flex items-start justify-between mb-3">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
           <p className="text-xs text-gray-500 mt-0.5">{description}</p>
         </div>
         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-          count > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-100 text-gray-500'
+          count > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-white/40 text-slate-500 border border-slate-200/60'
         }`}>
           {count} {countLabel}
         </span>
@@ -117,19 +117,19 @@ export default function CleanupPage() {
       />
 
       {result && (
-        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 flex justify-between">
+        <div className="mb-4 rounded-xl border border-green-200/60 bg-green-50/60 px-4 py-3 text-sm text-green-700 flex justify-between">
           <span>✓ {result}</span>
           <button onClick={() => setResult(null)} className="text-green-400">✕</button>
         </div>
       )}
       {error && (
-        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between">
+        <div className="mb-4 rounded-xl border border-red-200/60 bg-red-50/60 px-4 py-3 text-sm text-red-700 flex justify-between">
           <span>{error}</span>
           <button onClick={() => setError(null)} className="text-red-400">✕</button>
         </div>
       )}
       {previewError && (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <div className="mb-4 rounded-xl border border-amber-200/60 bg-amber-50/60 px-4 py-3 text-sm text-amber-700">
           ⚠ {previewError}
         </div>
       )}
@@ -137,20 +137,20 @@ export default function CleanupPage() {
       {/* Bestätigungs-Modal */}
       {confirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+          <div className="w-full max-w-sm rounded-xl glass-card p-6">
             <h3 className="text-sm font-semibold text-gray-900 mb-2">{confirm.title}</h3>
             <p className="text-sm text-gray-600 mb-5">{confirm.description}</p>
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setConfirm(null)}
-                className="rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                className="rounded-xl border border-slate-200/60 bg-white/60 px-4 py-2 text-sm text-slate-600 hover:bg-white/90 transition-all"
               >
                 Abbrechen
               </button>
               <button
                 onClick={confirm.onConfirm}
                 disabled={running}
-                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                className="btn-primary rounded-xl px-4 py-2 text-sm font-medium disabled:opacity-50"
               >
                 {running ? 'Läuft…' : 'Bestätigen'}
               </button>
@@ -176,7 +176,7 @@ export default function CleanupPage() {
                 max={365}
                 value={pendingDays}
                 onChange={e => setPendingDays(Number(e.target.value))}
-                className="w-16 rounded border border-gray-200 px-2 py-1 text-xs"
+                className="w-16 rounded-xl border border-slate-200/60 bg-white/60 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300/60"
               />
               Tage
             </label>
@@ -195,7 +195,7 @@ export default function CleanupPage() {
                   description: 'Alle betroffenen Items werden auf \'Abgelehnt\' gesetzt.',
                   onConfirm: () => runAction('/api/cleanup/pending-items', { olderThanDays: pendingDays, action: 'reject', onlyWithoutTopic: pendingOnlyWithoutTopic }),
                 })}
-                className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+                className="rounded-xl border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs text-slate-600 hover:bg-white/90 transition-all"
               >
                 Ablehnen
               </button>
@@ -205,7 +205,7 @@ export default function CleanupPage() {
                   description: 'Die gefilterten Items werden unwiderruflich gelöscht.',
                   onConfirm: () => runAction('/api/cleanup/pending-items', { olderThanDays: pendingDays, action: 'delete', onlyWithoutTopic: pendingOnlyWithoutTopic }),
                 })}
-                className="rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                className="rounded-xl border border-red-200/60 bg-red-50/60 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100/60"
               >
                 Löschen
               </button>
@@ -229,14 +229,14 @@ export default function CleanupPage() {
                 max={365}
                 value={logDays}
                 onChange={e => setLogDays(Number(e.target.value))}
-                className="w-16 rounded border border-gray-200 px-2 py-1 text-xs"
+                className="w-16 rounded-xl border border-slate-200/60 bg-white/60 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300/60"
               />
               Tage
             </label>
             <select
               value={logStatusFilter}
               onChange={e => setLogStatusFilter(e.target.value as 'all' | 'failed_only')}
-              className="rounded border border-gray-200 px-2 py-1 text-xs"
+              className="rounded-xl border border-slate-200/60 bg-white/60 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-violet-300/60"
             >
               <option value="all">Alle Status</option>
               <option value="failed_only">Nur fehlgeschlagene</option>
@@ -247,7 +247,7 @@ export default function CleanupPage() {
                 description: 'Die gefilterten Log-Einträge werden unwiderruflich gelöscht.',
                 onConfirm: () => runAction('/api/cleanup/classification-logs', { olderThanDays: logDays, statusFilter: logStatusFilter }),
               })}
-              className="ml-auto rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+              className="ml-auto rounded-xl border border-red-200/60 bg-red-50/60 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100/60"
             >
               Löschen
             </button>
@@ -268,7 +268,7 @@ export default function CleanupPage() {
                 description: 'Alle Cache-Einträge mit Status "failed" werden gelöscht.',
                 onConfirm: () => runAction('/api/cleanup/enrichment-cache', { scope: 'failed_only' }),
               })}
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
+              className="rounded-xl border border-slate-200/60 bg-white/60 px-3 py-1.5 text-xs text-slate-600 hover:bg-white/90 transition-all"
             >
               Nur fehlgeschlagene
             </button>
@@ -278,7 +278,7 @@ export default function CleanupPage() {
                 description: 'Alle Cache-Einträge werden gelöscht. Zukünftige Klassifizierungen holen Inhalte neu.',
                 onConfirm: () => runAction('/api/cleanup/enrichment-cache', { scope: 'all' }),
               })}
-              className="rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+              className="rounded-xl border border-red-200/60 bg-red-50/60 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100/60"
             >
               Alle leeren
             </button>
@@ -299,7 +299,7 @@ export default function CleanupPage() {
                 description: 'Nicht referenzierte, abgelehnte Topics werden gelöscht.',
                 onConfirm: () => runAction('/api/cleanup/rejected-topics', {}),
               })}
-              className="rounded-md border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+              className="rounded-xl border border-red-200/60 bg-red-50/60 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100/60"
             >
               Löschen
             </button>
