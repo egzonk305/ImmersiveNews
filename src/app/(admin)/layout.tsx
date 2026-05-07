@@ -12,7 +12,7 @@ export default function AdminLayout({
       <div className="flex flex-col flex-1 overflow-hidden">
         <TopBar />
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto p-6">
+          <div className="max-w-7xl mx-auto px-6 py-8 animate-fade-in">
             {children}
           </div>
         </main>

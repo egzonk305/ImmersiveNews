@@ -13,6 +13,7 @@ const routeLabels: Record<string, string> = {
   '/settings/feeds': 'Feed-Einstellungen',
   '/settings/classifier': 'KI-Einstellungen',
   '/classification-logs': 'KI-Logs',
+  '/cleanup': 'Aufräumen',
   '/schema': 'Datenbank-Schema',
 }
 
@@ -34,13 +35,9 @@ export function TopBar() {
 
   return (
     <header
-      className="h-14 px-6 flex items-center justify-between flex-shrink-0"
+      className="h-14 px-6 flex items-center justify-between flex-shrink-0 surface-chrome"
       style={{
-        background: 'rgba(255,255,255,0.50)',
-        backdropFilter: 'blur(20px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        borderBottom: '1px solid rgba(255,255,255,0.60)',
-        boxShadow: '0 1px 16px rgba(99,102,241,0.05)',
+        borderBottom: '1px solid rgba(255,255,255,0.55)',
       }}
     >
       <nav className="flex items-center gap-1.5 text-sm min-w-0">
@@ -52,14 +49,18 @@ export function TopBar() {
             return (
               <span key={c.href} className="flex items-center gap-1.5 min-w-0">
                 {i > 0 && (
-                  <span className="text-violet-200 font-light select-none">/</span>
+                  <span className="text-violet-200 font-light select-none" aria-hidden>
+                    ›
+                  </span>
                 )}
                 {last ? (
-                  <span className="font-semibold text-slate-700 truncate">{c.label}</span>
+                  <span className="font-semibold text-slate-700 truncate tracking-tight">
+                    {c.label}
+                  </span>
                 ) : (
                   <Link
                     href={c.href}
-                    className="text-slate-400 hover:text-violet-600 transition-colors truncate"
+                    className="text-slate-400 hover:text-violet-600 transition-colors duration-200 truncate"
                   >
                     {c.label}
                   </Link>
@@ -71,7 +72,7 @@ export function TopBar() {
       </nav>
 
       <div className="flex items-center gap-2.5 flex-shrink-0">
-        <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-400">
+        <span className="hidden sm:inline-flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
           <span className="relative flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
@@ -79,10 +80,10 @@ export function TopBar() {
           DB verbunden
         </span>
         <span
-          className="text-xs font-semibold px-2.5 py-1 rounded-full text-violet-700"
+          className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-violet-700 tracking-wide"
           style={{
-            background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.10) 60%, rgba(236,72,153,0.08) 100%)',
-            boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.20)',
+            background: 'linear-gradient(135deg, rgba(99,102,241,0.10) 0%, rgba(139,92,246,0.08) 60%, rgba(236,72,153,0.06) 100%)',
+            boxShadow: 'inset 0 0 0 1px rgba(139,92,246,0.20), 0 1px 2px rgba(99,102,241,0.06)',
           }}
         >
           Admin
